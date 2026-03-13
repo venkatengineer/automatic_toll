@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Device Tracking Simulation</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+
+body{
+margin:0;
+}
+
+#map{
+height:100vh;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script>
+
+// simulated path
+var path = [
+[13.0827,80.2707],
+[13.0830,80.2715],
+[13.0835,80.2720],
+[13.0840,80.2728],
+[13.0846,80.2735],
+[13.0850,80.2742]
+];
+
+var map = L.map('map').setView(path[0], 15);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
+
+var marker = L.marker(path[0]).addTo(map);
+
+var i = 0;
+
+function moveMarker(){
+
+i++;
+
+if(i >= path.length){
+i = 0;
+}
+
+marker.setLatLng(path[i]);
+map.panTo(path[i]);
+
+}
+
+setInterval(moveMarker,2000);
+
+</script>
+
+</body>
+
+</html>
