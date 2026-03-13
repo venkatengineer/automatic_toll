@@ -1,42 +1,46 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-<title>Get Phone Location</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
 </head>
 
 <body>
 
-<h2>Phone Location</h2>
-
-<button onclick="getLocation()">Get Location</button>
-
-<p id="location"></p>
+<h2>Tracking Location...</h2>
 
 <script>
 
-function getLocation() {
+// Firebase config
+var firebaseConfig = {
+apiKey: "AIzaSyD7UoIbBElF_IKNsPJrMlsSW1Ofw5hvi_U",
+authDomain: "automatictoll-623fa.firebaseapp.com",
+databaseURL: "https://automatictoll-623fa-default-rtdb.firebaseio.com",
+projectId: "automatictoll-623fa",
+};
 
-if (navigator.geolocation) {
+firebase.initializeApp(firebaseConfig);
 
-navigator.geolocation.getCurrentPosition(showPosition);
+var db = firebase.database();
 
-} else {
+function sendLocation(position){
 
-document.getElementById("location").innerHTML = "Geolocation not supported";
+var lat = position.coords.latitude;
+var lon = position.coords.longitude;
+
+db.ref("device/location").set({
+latitude: lat,
+longitude: lon,
+timestamp: Date.now()
+});
 
 }
 
-}
-
-function showPosition(position) {
-
-let lat = position.coords.latitude;
-let lon = position.coords.longitude;
-
-document.getElementById("location").innerHTML =
-"Latitude: " + lat + "<br>Longitude: " + lon;
-
-}
+// continuously track
+navigator.geolocation.watchPosition(sendLocation);
 
 </script>
 
