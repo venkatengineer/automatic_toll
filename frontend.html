@@ -3,39 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Location Finder</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>Location Finder | Premium Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+            --text: #f8fafc;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            color: white;
+            color: var(--text);
+            overflow: hidden;
         }
+
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        .blob {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: var(--primary);
+            filter: blur(80px);
+            border-radius: 50%;
+            z-index: -1;
+            opacity: 0.2;
+            animation: move 20s infinite alternate;
+        }
+
+        @keyframes move {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(50%, 50%); }
+        }
+
         .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            padding: 2rem;
-            border-radius: 24px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 32px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 400px;
+            transition: transform 0.3s ease;
         }
-        button {
-            background: #6366f1;
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            font-weight: 700;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: #94a3b8;
+            margin-bottom: 2rem;
+        }
+
+        .status-container {
+            margin: 2rem 0;
+            min-height: 80px;
+        }
+
+        .coordinates {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem;
+            border-radius: 16px;
+            font-family: 'Monaco', monospace;
+            font-size: 0.9rem;
+            display: none;
+            border: 1px solid var(--border);
+        }
+
+        .btn {
+            background: var(--primary);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
+            padding: 1rem 2rem;
+            border-radius: 16px;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        button:hover { background: #4f46e5; transform: translateY(-2px); }
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             width: 100%;
             display: flex;
@@ -117,7 +187,20 @@
             const statusMsg = document.getElementById('status-msg');
             const mapsLink = document.getElementById('maps-link');
 
-            // Reset UI
+            // Reset UI functions
+            function resetButton() {
+                btn.disabled = false;
+                loader.style.display = 'none';
+                btnText.innerText = 'Share My Location';
+            }
+
+            function showError(msg) {
+                statusMsg.innerText = msg;
+                statusMsg.style.color = "#f87171";
+                resetButton();
+            }
+
+            // Reset UI state
             btn.disabled = true;
             loader.style.display = 'block';
             btnText.innerText = 'Locating...';
@@ -140,9 +223,8 @@
                 mapsLink.style.display = 'inline-block';
 
                 try {
-                    // Sync with Backend
                     statusMsg.innerText = "Syncing with secure server...";
-                    const response = await fetch("http://127.0.0.1:5000/location", {
+                    const response = await fetch("/location", { // Using relative path
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lat: latitude, lon: longitude })
@@ -161,7 +243,11 @@
                 } finally {
                     resetButton();
                 }
-            );
+
+            }, (err) => {
+                showError("Access denied or timeout. Please check permissions.");
+                resetButton();
+            }, { enableHighAccuracy: true, timeout: 10000 });
         }
     </script>
 </body>

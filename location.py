@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -14,26 +14,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-@app.route('/')
-def index():
-    return app.send_static_file('frontend.html')
-
-# Location Model
-class Location(db.Model):
-    id = db.Column(db.Column(db.Integer).type, primary_key=True)
-    latitude = db.Column(db.Float, nullable=False)
-    longitude = db.Column(db.Float, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "latitude": self.latitude,
-            "longitude": self.longitude,
-            "timestamp": self.timestamp.isoformat()
-        }
-
-# Simplified model definition to ensure it works on fresh run
+# UserLocation Model
 class UserLocation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     latitude = db.Column(db.Float, nullable=False)
@@ -43,6 +24,11 @@ class UserLocation(db.Model):
 # Create database tables
 with app.app_context():
     db.create_all()
+
+# Route to serve the frontend.html from the root directory
+@app.route('/')
+def index():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'frontend.html')
 
 @app.route('/location', methods=['POST'])
 def receive_location():
