@@ -132,6 +132,16 @@ def admin_page():
     if session.get('role') != 'admin': return redirect(url_for('login_page'))
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'admin.html')
 
+@app.route('/wallet')
+def wallet_page():
+    if 'username' not in session: return redirect(url_for('login_page'))
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'wallet.html')
+
+@app.route('/admin/wallet')
+def admin_wallet_page():
+    if session.get('role') != 'admin': return redirect(url_for('login_page'))
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'admin_wallet.html')
+
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.get_json()
@@ -184,9 +194,11 @@ def receive_location():
         else:
             at_checkpoint = 1 if is_near_roads(lat, lon, config['routes'], config['radius']) else 0
 
-        new_location = UserLocation(latitude=lat, longitude=lon, username=session['username'], is_at_checkpoint=at_checkpoint)
-        db.session.add(new_location)
-        db.session.commit()
+        # ONLY store in database if user is at the checkpoint/geofence
+        if at_checkpoint:
+            new_location = UserLocation(latitude=lat, longitude=lon, username=session['username'], is_at_checkpoint=at_checkpoint)
+            db.session.add(new_location)
+            db.session.commit()
 
         user = User.query.filter_by(username=session['username']).first()
         balance = user.balance if user else 0.0

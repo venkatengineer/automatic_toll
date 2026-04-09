@@ -4,245 +4,162 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Location Tracker | Secure Portal</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         :root {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #f8fafc;
+            --primary-blue: #0ea5e9;
+            --primary-green: #10b981;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --card: #ffffff;
+            --border: #f1f5f9;
         }
-
         body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg-gradient);
-            background-attachment: fixed;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: radial-gradient(circle at top left, #e0f2fe, transparent),
+                        radial-gradient(circle at bottom right, #f0fdf4, transparent),
+                        #f8fafc;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: var(--text);
             overflow: hidden;
         }
 
         .container {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            max-width: 900px;
-            padding: 2rem;
-            display: flex;
-            gap: 2rem;
-            justify-content: center;
-            align-items: stretch;
+            position: relative; z-index: 1; width: 100%; max-width: 1000px; padding: 2rem;
+            display: flex; gap: 2rem; justify-content: center; align-items: stretch;
         }
 
         @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-                align-items: center;
-            }
+            .container { flex-direction: column; align-items: center; overflow-y: auto; height: 100vh; padding: 1rem; }
         }
 
         .blob {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: var(--primary);
-            filter: blur(100px);
-            border-radius: 50%;
-            z-index: -1;
-            opacity: 0.15;
-            animation: move 25s infinite alternate;
+            position: absolute; width: 500px; height: 500px;
+            background: var(--primary-blue); filter: blur(100px); border-radius: 50%; z-index: -1; opacity: 0.1;
+            animation: move 20s infinite linear;
         }
 
         @keyframes move {
-            from { transform: translate(-30%, -30%); }
-            to { transform: translate(30%, 30%); }
+            0% { transform: translate(-30%, -30%) rotate(0deg); }
+            50% { transform: translate(30%, 30%) rotate(180deg); }
+            100% { transform: translate(-30%, -30%) rotate(360deg); }
         }
 
         .card {
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 2.5rem;
-            border-radius: 32px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            text-align: center;
-            border: 1px solid var(--border);
-            width: 100%;
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            background: var(--card); padding: 3rem; border-radius: 40px; 
+            box-shadow: 0 40px 100px -20px rgba(15, 23, 42, 0.08);
+            text-align: center; border: 1px solid white; width: 100%; max-width: 420px;
+            display: flex; flex-direction: column; justify-content: center;
+            animation: slideInLeft 1s cubic-bezier(0.16, 1, 0.3, 1);
         }
+        @keyframes slideInLeft { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: translateX(0); } }
 
         .map-card {
-            background: var(--glass);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 32px;
-            border: 1px solid var(--border);
-            flex: 1;
-            min-height: 400px;
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            background: var(--card); border-radius: 40px; border: 1px solid white;
+            flex: 1; min-height: 450px; overflow: hidden; position: relative;
+            box-shadow: 0 40px 100px -20px rgba(15, 23, 42, 0.08);
+            animation: slideInRight 1s cubic-bezier(0.16, 1, 0.3, 1);
         }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
 
-        #map {
-            width: 100%;
-            height: 100%;
-            background: #1e1b4b;
+        #map { width: 100%; height: 100%; background: #f8fafc; }
+
+        .nav-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        
+        h1 { font-weight: 800; font-size: 2.2rem; margin: 0 0 0.5rem 0; color: var(--text); letter-spacing: -0.02rem; }
+        p { color: #64748b; margin: 0 0 2rem 0; font-size: 0.95rem; line-height: 1.6; }
+
+        .status-box {
+            margin-bottom: 1.5rem; padding: 1.25rem; border-radius: 20px; background: #f8fafc; border: 1.5px solid var(--border);
+            display: flex; align-items: center; gap: 1rem; transition: 0.3s;
         }
+        .status-indicator { width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1; position: relative; }
+        .status-indicator.active { background: var(--primary-green); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2); }
+        .status-indicator.loading { background: var(--primary-blue); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
 
-        h1 {
-            font-weight: 700;
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(to right, #fff, #94a3b8);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .wallet-nav {
+            text-decoration: none; display: block; margin-bottom: 1.5rem;
+            transform: scale(1); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        p {
-            color: #94a3b8;
-            margin-bottom: 2rem;
-        }
-
-        .status-container {
-            margin: 1.5rem 0;
-            min-height: 100px;
+        .wallet-nav:hover { transform: scale(1.02); }
+        
+        .wallet-content {
+            padding: 1.5rem; border-radius: 24px; background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%);
+            border: 1.5px solid rgba(14, 165, 233, 0.1); display: flex; justify-content: space-between; align-items: center;
         }
 
         .coordinates {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 1.25rem;
-            border-radius: 20px;
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 0.95rem;
-            display: none;
-            border: 1px solid var(--border);
-            margin-bottom: 1rem;
-            text-align: left;
+            background: #f8fafc; padding: 1.25rem; border-radius: 20px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; display: none;
+            border: 1.5px solid var(--border); margin-bottom: 1.5rem; text-align: left;
+            animation: fadeIn 0.5s ease-out;
         }
-
-        .label {
-            color: var(--primary);
-            font-weight: bold;
-            display: inline-block;
-            width: 40px;
-        }
+        .label { color: var(--primary-blue); font-weight: 800; display: inline-block; width: 45px; }
 
         .btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 16px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white; border: none; padding: 1.1rem; border-radius: 20px;
+            font-size: 1rem; font-weight: 800; cursor: pointer; transition: 0.4s;
+            width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.75rem;
+            box-shadow: 0 20px 30px -10px rgba(14, 165, 233, 0.4);
         }
-
-        .btn:hover {
-            background: var(--primary-hover);
-            transform: scale(1.02);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 25px 40px -10px rgba(14, 165, 233, 0.5); }
+        .btn:active { transform: translateY(0); }
 
         .loader {
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-            display: none;
+            width: 18px; height: 18px; border: 2.5px solid rgba(14, 165, 233, 0.2);
+            border-radius: 50%; border-top-color: var(--primary-blue);
+            animation: spin 0.8s linear infinite; display: none;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .logout-link {
+            color: #ef4444; text-decoration: none; font-size: 0.9rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+            margin-top: 2rem; transition: 0.2s;
         }
-
-        .footer-links {
-            margin-top: auto;
-            display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            padding-top: 2rem;
-        }
-
-        .link-item {
-            color: #94a3b8;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: color 0.3s;
-        }
-
-        .link-item:hover {
-            color: var(--primary);
-        }
-
-        .logout {
-            color: #f87171;
-        }
-
-        .logout:hover {
-            color: #ef4444;
-        }
+        .logout-link:hover { opacity: 0.7; }
     </style>
 </head>
 <body>
     <div class="blob"></div>
     <div class="container">
         <div class="card">
-            <h1 id="app-title">Live Portal</h1>
-            <p id="road-display">Your location is being synchronized automatically with our secure nodes.</p>
+            <h1 id="app-title">Tracking Active</h1>
+            <p id="road-display">Securing your journey with real-time perimeter monitoring and verification.</p>
             
-            <div id="status-box" style="margin-bottom: 1rem; padding: 1rem; border-radius: 16px; background: rgba(0,0,0,0.2); border: 1px solid var(--border);">
-                <div id="loader" class="loader" style="margin: 0 auto 0.5rem; display: block;"></div>
-                <div id="status-msg" style="font-size: 0.9rem;">Initializing tracker...</div>
+            <div class="status-box">
+                <div id="status-ind" class="status-indicator loading"></div>
+                <div id="status-msg" style="font-size: 0.9rem; font-weight: 600; color: #64748b;">Initializing system...</div>
+                <div id="loader" class="loader" style="margin-left: auto; display: block;"></div>
             </div>
 
-            <div id="wallet-card" style="margin-bottom: 2rem; padding: 1rem; border-radius: 20px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); display: flex; justify-content: space-between; align-items: center;">
-                <div style="text-align: left;">
-                    <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05rem;">My Wallet</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #fff;">₹<span id="wallet-balance">0.00</span></div>
+            <a href="/wallet" class="wallet-nav">
+                <div class="wallet-content">
+                    <div style="text-align: left;">
+                        <div style="font-size: 0.75rem; color: #64748b; font-weight: 800; text-transform: uppercase;">Verified Balance</div>
+                        <div style="font-size: 1.5rem; font-weight: 900; color: var(--text);">₹<span id="wallet-balance">0.00</span></div>
+                    </div>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
                 </div>
-                <div style="font-size: 1.5rem;">💳</div>
-            </div>
+            </a>
 
             <div id="coords" class="coordinates">
-                <div><span class="label">LAT:</span> <span id="lat" style="color: #fff;">--</span></div>
-                <div style="margin-top: 0.5rem;"><span class="label">LON:</span> <span id="lon" style="color: #fff;">--</span></div>
+                <div><span class="label">LAT</span> <span id="lat" style="color: var(--text);">--</span></div>
+                <div style="margin-top: 0.5rem;"><span class="label">LON</span> <span id="lon" style="color: var(--text);">--</span></div>
             </div>
 
             <button id="retry-btn" class="btn" onclick="shareLocation()" style="display: none;">
-                Retry Sync
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                Reconnect Server
             </button>
 
-            <div class="footer-links">
-                <a href="/api/logout" class="link-item logout">Logout</a>
-            </div>
+            <a href="/api/logout" class="logout-link">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Sign Out
+            </a>
         </div>
 
         <div class="map-card">
@@ -275,16 +192,16 @@
                     
                     if (config.mode === 'point') {
                         targetCircle = L.circle([config.lat, config.lon], {
-                            color: '#6366f1', fillColor: '#6366f1', fillOpacity: 0.15, radius: config.radius
+                            color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.15, radius: config.radius
                         }).addTo(map);
                     } else if (config.routes && config.routes.length > 0) {
                         config.routes.forEach(route => {
                             const points = route.points || route;
-                            L.polyline(points, { color: '#6366f1', weight: 6, opacity: 0.6 }).addTo(roadLayers);
+                            L.polyline(points, { color: '#0ea5e9', weight: 6, opacity: 0.6 }).addTo(roadLayers);
                         });
                         // Add a halo circle around current point for buffer visualization
                         targetCircle = L.circle([lat, lon], {
-                            radius: config.radius, color: '#4ade80', weight: 1, fillOpacity: 0.1
+                            radius: config.radius, color: '#22c55e', weight: 1, fillOpacity: 0.1
                         }).addTo(map);
                         map.fitBounds(roadLayers.getBounds());
                     }
@@ -335,12 +252,12 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lat: latitude, lon: longitude })
                     });
-
                     if (response.ok) {
                         const data = await response.json();
                         const isAtCheckpoint = data.data.at_checkpoint;
-                        statusMsg.innerText = isAtCheckpoint ? "✓ Verified: Inside Target Zone" : "✓ Sync successful: Outside Zone";
-                        statusMsg.style.color = isAtCheckpoint ? "#4ade80" : "#94a3b8";
+                        statusMsg.innerText = isAtCheckpoint ? "Verified: Inside Segment" : "Sync Success: Active";
+                        statusMsg.style.color = isAtCheckpoint ? "#10b981" : "#64748b";
+                        document.getElementById('status-ind').className = "status-indicator active";
                         loader.style.display = 'none';
                         
                         // Update balance
@@ -350,19 +267,20 @@
                     } else {
                         throw new Error("Server error");
                     }
-                } catch (err) {
-                    statusMsg.innerText = "⚠ Sync failed. Local mode active.";
-                    statusMsg.style.color = "#f87171";
+                } catch (error) {
+                    console.error("Sync error:", error);
+                    statusMsg.innerText = "Connection Interrupted";
+                    statusMsg.style.color = "#ef4444";
+                    document.getElementById('status-ind').className = "status-indicator";
+                    document.getElementById('retry-btn').style.display = 'flex';
                     loader.style.display = 'none';
-                    retryBtn.style.display = 'flex';
                 }
-
-            }, (err) => {
-                statusMsg.innerText = "Access denied. Check permissions.";
-                statusMsg.style.color = "#f87171";
+            }, (error) => {
+                statusMsg.innerText = "GPS Access Denied";
+                statusMsg.style.color = "#ef4444";
+                document.getElementById('status-ind').className = "status-indicator";
                 loader.style.display = 'none';
-                retryBtn.style.display = 'flex';
-            }, { enableHighAccuracy: true, timeout: 10000 });
+            }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
         }
 
 

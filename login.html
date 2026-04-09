@@ -6,37 +6,92 @@
     <title>Login | Secure Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-blue: #0ea5e9;
+            --primary-green: #10b981;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --card: #ffffff;
+            --input-bg: #f8fafc;
+            --input-border: #e2e8f0;
+        }
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: white;
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: radial-gradient(circle at top left, #e0f2fe, transparent),
+                        radial-gradient(circle at bottom right, #f0fdf4, transparent),
+                        #f8fafc;
+            display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; color: var(--text);
+            overflow: hidden;
         }
         .card {
-            background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px);
-            padding: 2.5rem; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1);
-            width: 100%; max-width: 400px; text-align: center;
+            background: var(--card);
+            padding: 3rem; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 1);
+            width: 100%; max-width: 420px; text-align: center;
+            box-shadow: 0 40px 100px -20px rgba(15, 23, 42, 0.1);
+            animation: cardEnter 1s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
         }
-        .tabs { display: flex; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .tab { flex: 1; padding: 10px; cursor: pointer; color: #94a3b8; font-weight: 600; transition: 0.3s; }
-        .tab.active { color: #6366f1; border-bottom: 2px solid #6366f1; }
+        @keyframes cardEnter {
+            from { opacity: 0; transform: scale(0.95) translateY(30px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .logo-container {
+            width: 64px; height: 64px; background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            margin: 0 auto 1.5rem; border-radius: 20px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 20px -5px rgba(14, 165, 233, 0.4);
+            animation: logoPulse 2s infinite ease-in-out;
+        }
+        @keyframes logoPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .tabs { display: flex; margin-bottom: 2rem; gap: 1rem; padding: 6px; background: #f1f5f9; border-radius: 18px; }
+        .tab { flex: 1; padding: 10px; cursor: pointer; color: #64748b; font-weight: 700; font-size: 0.9rem; border-radius: 14px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .tab.active { background: white; color: var(--primary-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        
+        .input-group { text-align: left; margin-bottom: 1rem; transform: translateY(0); transition: 0.3s; }
+        .input-group:focus-within { transform: translateY(-2px); }
+        
+        label { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05rem; margin-left: 12px; }
+        
         input, select {
-            width: 100%; padding: 12px; margin: 8px 0; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
-            background: rgba(0,0,0,0.2); color: white; box-sizing: border-box; font-family: inherit;
+            width: 100%; padding: 14px 18px; margin-top: 6px; border-radius: 18px; border: 2px solid var(--input-border);
+            background: var(--input-bg); color: var(--text); box-sizing: border-box; font-family: inherit; font-size: 0.95rem;
+            transition: all 0.3s;
         }
-        select option { background: #1e1b4b; }
+        input:focus, select:focus { border-color: var(--primary-blue); outline: none; background: white; box-shadow: 0 0 0 5px rgba(14, 165, 233, 0.08); }
+        
         button {
-            width: 100%; background: #6366f1; color: white; border: none; padding: 12px;
-            border-radius: 12px; cursor: pointer; font-weight: 600; margin-top: 20px; transition: 0.3s;
+            width: 100%; background: linear-gradient(135deg, var(--primary-blue), var(--primary-green)); 
+            color: white; border: none; padding: 16px;
+            border-radius: 18px; cursor: pointer; font-weight: 800; margin-top: 24px; transition: 0.4s;
+            box-shadow: 0 15px 30px -10px rgba(14, 165, 233, 0.4);
+            font-size: 1rem; letter-spacing: 0.02rem;
         }
-        button:hover { background: #4f46e5; }
-        .error { color: #f87171; font-size: 0.85rem; margin-top: 10px; }
-        .success { color: #4ade80; font-size: 0.85rem; margin-top: 10px; }
+        button:hover { transform: translateY(-3px); box-shadow: 0 20px 40px -10px rgba(14, 165, 233, 0.5); }
+        button:active { transform: translateY(0); }
+        
+        .error { color: #ef4444; font-size: 0.85rem; margin-top: 15px; font-weight: 700; animation: shake 0.4s ease-in-out; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .success { color: var(--primary-green); font-size: 0.85rem; margin-top: 15px; font-weight: 700; }
+        
         .form-section { display: none; }
-        .form-section.active { display: block; }
+        .form-section.active { display: block; animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
     <div class="card">
+        <div class="logo-container">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+        </div>
         <div class="tabs">
             <div id="tab-login" class="tab active" onclick="showForm('login')">Login</div>
             <div id="tab-register" class="tab" onclick="showForm('register')">Register</div>
@@ -44,32 +99,56 @@
 
         <div id="login-form" class="form-section active">
             <h2>Secure Login</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem;">Sign in to access your portal</p>
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
+            <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem;">Sign in to management portal</p>
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter your username">
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter your password">
+            </div>
             <div id="login-error" class="error"></div>
-            <button onclick="login()">Login</button>
+            <button onclick="login()">Sign In</button>
         </div>
 
         <div id="register-form" class="form-section">
-            <h2>User Registration</h2>
-            <p style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1.5rem;">Create your account</p>
-            <input type="text" id="reg-username" placeholder="Username">
-            <input type="password" id="reg-password" placeholder="Password">
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="reg-plate" placeholder="Number Plate">
-                <select id="reg-type">
-                    <option value="" disabled selected>Vehicle Type</option>
-                    <option value="Car">Car</option>
-                    <option value="Truck">Truck</option>
-                    <option value="Bike">Bike</option>
-                    <option value="Bus">Bus</option>
-                </select>
+            <h2>Account Registration</h2>
+            <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem;">Create your secure user profile</p>
+            <div class="input-group">
+                <label>Username</label>
+                <input type="text" id="reg-username" placeholder="Username">
             </div>
-            <input type="tel" id="reg-phone" placeholder="Phone Number">
-            <input type="text" id="reg-aadhar" placeholder="Aadhar Number (12 digits)">
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" id="reg-password" placeholder="Password">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <div class="input-group" style="flex: 1;">
+                    <label>Number Plate</label>
+                    <input type="text" id="reg-plate" placeholder="AB 12 CD 3456">
+                </div>
+                <div class="input-group" style="flex: 1;">
+                    <label>Vehicle Type</label>
+                    <select id="reg-type">
+                        <option value="" disabled selected>Select type</option>
+                        <option value="Car">Car</option>
+                        <option value="Truck">Truck</option>
+                        <option value="Bike">Bike</option>
+                        <option value="Bus">Bus</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group">
+                <label>Phone Number</label>
+                <input type="tel" id="reg-phone" placeholder="+91 00000 00000">
+            </div>
+            <div class="input-group">
+                <label>Aadhar Number</label>
+                <input type="text" id="reg-aadhar" placeholder="12 Digit Identification">
+            </div>
             <div id="reg-msg" class="error"></div>
-            <button onclick="register()">Create Account</button>
+            <button onclick="register()">Complete Registration</button>
         </div>
     </div>
 
@@ -129,7 +208,7 @@
                 });
                 const result = await res.json();
                 if (res.ok) {
-                    msg.innerText = "✓ Registration Successful! Switching to Login...";
+                    msg.innerText = "Registration Successful. Redirecting to login...";
                     msg.className = "success";
                     setTimeout(() => showForm('login'), 2000);
                 } else {
@@ -137,7 +216,7 @@
                     msg.className = "error";
                 }
             } catch (err) {
-                msg.innerText = "Connection failed";
+                msg.innerText = "System connection failure";
                 msg.className = "error";
             }
         }

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Recharge Portal | Secure Tracking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0ea5e9;
+            --primary-green: #22c55e;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --card: #ffffff;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
+            min-height: 100vh; margin: 0; padding: 2rem; color: var(--text);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .container { width: 100%; max-width: 600px; animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .card {
+            background: var(--card); border-radius: 32px; padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.1);
+            border: 1px solid rgba(255,255,255,1);
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link { text-decoration: none; color: var(--primary-blue); font-weight: 600; font-size: 0.9rem; }
+        
+        h2 { margin: 0 0 1.5rem 0; font-weight: 800; color: var(--text); font-size: 1.8rem; }
+        
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05rem; }
+        input {
+            width: 100%; padding: 14px; border-radius: 16px; border: 2px solid #f1f5f9;
+            background: #f8fafc; color: var(--text); box-sizing: border-box; font-size: 1rem;
+            transition: 0.3s;
+        }
+        input:focus { border-color: var(--primary-blue); outline: none; background: #fff; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1); }
+        
+        .btn-recharge {
+            width: 100%; background: linear-gradient(135deg, var(--primary-blue), var(--primary-green));
+            color: white; border: none; padding: 16px; border-radius: 16px; font-weight: 700;
+            cursor: pointer; transition: 0.3s; margin-top: 1rem; font-size: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3);
+        }
+        .btn-recharge:hover { transform: scale(1.02); box-shadow: 0 15px 20px -3px rgba(14, 165, 233, 0.4); }
+        .btn-recharge:active { transform: scale(0.98); }
+        
+        #recharge-status { 
+            margin-top: 1.5rem; padding: 1rem; border-radius: 16px; font-size: 0.9rem; 
+            text-align: center; display: none; font-weight: 600;
+        }
+        .status-success { display: block !important; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .status-error { display: block !important; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        
+        .summary-box {
+            margin-top: 2rem; padding: 1.5rem; border-radius: 20px; background: #f8fafc;
+            border: 1px dashed #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/admin" class="back-link">← Return to Dashboard</a>
+            <div style="font-size: 1.5rem;">🏦</div>
+        </div>
+        
+        <div class="card">
+            <h2>Wallet Recharge</h2>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="recharge-user" placeholder="e.g. john_doe">
+            </div>
+            <div class="form-group">
+                <label>Aadhar Number</label>
+                <input type="text" id="recharge-aadhar" placeholder="12 digit aadhar number">
+            </div>
+            <div class="form-group">
+                <label>Recharge Amount (₹)</label>
+                <input type="number" id="recharge-amount" value="100" min="1">
+            </div>
+            
+            <button class="btn-recharge" onclick="rechargeWallet()">Process Recharge</button>
+            <div id="recharge-status"></div>
+            
+            <div class="summary-box">
+                <div style="font-size: 0.75rem; color: #64748b; font-weight: 700;">ADMIN INSTRUCTIONS</div>
+                <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem; line-height: 1.5;">
+                    Verify the user's identity via Aadhar. All transactions are logged and irreversible. Ensure the amount entered is correct before clicking process.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function rechargeWallet() {
+            const user = document.getElementById('recharge-user').value;
+            const aadhar = document.getElementById('recharge-aadhar').value;
+            const amount = document.getElementById('recharge-amount').value;
+            const status = document.getElementById('recharge-status');
+
+            if (!user || !aadhar || !amount) {
+                status.innerText = "Please fill in all required fields.";
+                status.className = "status-error";
+                return;
+            }
+
+            status.innerText = "Processing transaction...";
+            status.className = "status-success";
+            status.style.opacity = '0.7';
+
+            try {
+                const res = await fetch('/api/recharge', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: user, aadhar: aadhar, amount: amount })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    status.innerText = `✅ Recharge Successful! ₹${amount} added to ${user}. New balance: ₹${data.new_balance}`;
+                    status.className = "status-success";
+                    document.getElementById('recharge-user').value = '';
+                    document.getElementById('recharge-aadhar').value = '';
+                } else {
+                    status.innerText = "❌ Transaction Failed: " + data.message;
+                    status.className = "status-error";
+                }
+            } catch (e) {
+                status.innerText = "❌ Connection failed. Please check server status.";
+                status.className = "status-error";
+            }
+            status.style.opacity = '1';
+        }
+    </script>
+</body>
+</html>

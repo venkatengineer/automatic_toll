@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Wallet | Secure Tracking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #0ea5e9;
+            --primary-green: #22c55e;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --card: rgba(255, 255, 255, 0.95);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 100%);
+            min-height: 100vh; margin: 0; padding: 2rem; color: var(--text);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .container { width: 100%; max-width: 500px; animation: slideUp 0.6s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .card {
+            background: var(--card); backdrop-filter: blur(20px);
+            padding: 3rem; border-radius: 40px; border: 1px solid rgba(255, 255, 255, 0.5);
+            text-align: center; box-shadow: 0 25px 50px -12px rgba(14, 165, 233, 0.2);
+            position: relative; overflow: hidden;
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .back-link { text-decoration: none; color: var(--primary-blue); font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: 0.3s; }
+        .back-link:hover { transform: translateX(-5px); }
+        
+        .wallet-icon { font-size: 3rem; margin-bottom: 1rem; display: inline-block; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        
+        .balance-label { font-size: 0.85rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1rem; margin-bottom: 0.5rem; }
+        .balance-amount { font-size: 4rem; font-weight: 800; color: var(--text); margin: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .currency { font-size: 1.5rem; color: var(--primary-green); margin-top: 1rem; }
+        
+        .action-card {
+            margin-top: 2rem; padding: 1.5rem; border-radius: 24px; background: rgba(14, 165, 233, 0.05);
+            border: 1px solid rgba(14, 165, 233, 0.1); display: flex; align-items: center; gap: 1rem;
+        }
+        .info-msg { font-size: 0.9rem; color: #64748b; margin-top: 2rem; line-height: 1.6; }
+        
+        #refresh-btn { 
+            background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--primary-blue); 
+            padding: 8px; border-radius: 50%; transition: 0.3s;
+        }
+        #refresh-btn:hover { background: rgba(14, 165, 233, 0.1); transform: rotate(180deg); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="back-link">← Back to Tracking</a>
+        </div>
+        <div class="card">
+            <div class="wallet-icon">💳</div>
+            <div class="balance-label">Current Balance</div>
+            <div class="balance-amount">
+                <span class="currency">₹</span>
+                <span id="balance">0.00</span>
+                <button id="refresh-btn" onclick="loadBalance()" title="Refresh Balance">↻</button>
+            </div>
+            
+            <div class="action-card">
+                <div style="font-size: 1.5rem;">🔋</div>
+                <div style="text-align: left;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text);">Ready for Tolls</div>
+                    <div style="font-size: 0.75rem; color: #64748b;">Your wallet is automatically debited at checkpoints.</div>
+                </div>
+            </div>
+
+            <p class="info-msg">
+                To add funds, please visit any authorized admin desk. <br>
+                Provide your <b>Username</b> and <b>Aadhar Number</b> to recharge.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        async function loadBalance() {
+            const btn = document.getElementById('refresh-btn');
+            btn.style.opacity = '0.5';
+            try {
+                const res = await fetch('/api/get_target');
+                const data = await res.json();
+                if (data.balance !== undefined) {
+                    document.getElementById('balance').innerText = data.balance.toFixed(2);
+                }
+            } catch (e) {}
+            setTimeout(() => btn.style.opacity = '1', 500);
+        }
+        window.onload = loadBalance;
+    </script>
+</body>
+</html>
