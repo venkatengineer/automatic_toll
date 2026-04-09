@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Location Finder | Premium Experience</title>
+    <title>Location Tracker | Secure Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -31,41 +33,72 @@
         .container {
             position: relative;
             z-index: 1;
+            width: 100%;
+            max-width: 900px;
+            padding: 2rem;
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            align-items: stretch;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
         }
 
         .blob {
             position: absolute;
-            width: 300px;
-            height: 300px;
+            width: 400px;
+            height: 400px;
             background: var(--primary);
-            filter: blur(80px);
+            filter: blur(100px);
             border-radius: 50%;
             z-index: -1;
-            opacity: 0.2;
-            animation: move 20s infinite alternate;
+            opacity: 0.15;
+            animation: move 25s infinite alternate;
         }
 
         @keyframes move {
-            from { transform: translate(-50%, -50%); }
-            to { transform: translate(50%, 50%); }
+            from { transform: translate(-30%, -30%); }
+            to { transform: translate(30%, 30%); }
         }
 
         .card {
             background: var(--glass);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            padding: 3rem;
+            padding: 2.5rem;
             border-radius: 32px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             text-align: center;
             border: 1px solid var(--border);
             width: 100%;
             max-width: 400px;
-            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
+        .map-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 32px;
+            border: 1px solid var(--border);
+            flex: 1;
+            min-height: 400px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #1e1b4b;
         }
 
         h1 {
@@ -74,6 +107,7 @@
             margin-bottom: 0.5rem;
             background: linear-gradient(to right, #fff, #94a3b8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -83,18 +117,27 @@
         }
 
         .status-container {
-            margin: 2rem 0;
-            min-height: 80px;
+            margin: 1.5rem 0;
+            min-height: 100px;
         }
 
         .coordinates {
-            background: rgba(0, 0, 0, 0.2);
-            padding: 1rem;
-            border-radius: 16px;
-            font-family: 'Monaco', monospace;
-            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.25rem;
+            border-radius: 20px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.95rem;
             display: none;
             border: 1px solid var(--border);
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .label {
+            color: var(--primary);
+            font-weight: bold;
+            display: inline-block;
+            width: 40px;
         }
 
         .btn {
@@ -118,26 +161,11 @@
         .btn:hover {
             background: var(--primary-hover);
             transform: scale(1.02);
-            box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        .maps-link {
-            color: var(--primary);
-            text-decoration: none;
-            font-size: 0.9rem;
-            margin-top: 1.5rem;
-            display: inline-block;
-            font-weight: 600;
-            transition: opacity 0.3s;
-        }
-
-        .maps-link:hover {
-            text-decoration: underline;
         }
 
         .loader {
@@ -153,78 +181,156 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        .footer-links {
+            margin-top: auto;
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            padding-top: 2rem;
+        }
+
+        .link-item {
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .link-item:hover {
+            color: var(--primary);
+        }
+
+        .logout {
+            color: #f87171;
+        }
+
+        .logout:hover {
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
     <div class="blob"></div>
     <div class="container">
         <div class="card">
-            <h1>Locate Me</h1>
-            <p>Get your precise coordinates and sync with the secure portal.</p>
+            <h1 id="app-title">Live Portal</h1>
+            <p id="road-display">Your location is being synchronized automatically with our secure nodes.</p>
             
-            <button id="get-btn" class="btn" onclick="shareLocation()">
-                <div id="loader" class="loader"></div>
-                <span id="btn-text">Share My Location</span>
+            <div id="status-box" style="margin-bottom: 1rem; padding: 1rem; border-radius: 16px; background: rgba(0,0,0,0.2); border: 1px solid var(--border);">
+                <div id="loader" class="loader" style="margin: 0 auto 0.5rem; display: block;"></div>
+                <div id="status-msg" style="font-size: 0.9rem;">Initializing tracker...</div>
+            </div>
+
+            <div id="wallet-card" style="margin-bottom: 2rem; padding: 1rem; border-radius: 20px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); display: flex; justify-content: space-between; align-items: center;">
+                <div style="text-align: left;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05rem;">My Wallet</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #fff;">₹<span id="wallet-balance">0.00</span></div>
+                </div>
+                <div style="font-size: 1.5rem;">💳</div>
+            </div>
+
+            <div id="coords" class="coordinates">
+                <div><span class="label">LAT:</span> <span id="lat" style="color: #fff;">--</span></div>
+                <div style="margin-top: 0.5rem;"><span class="label">LON:</span> <span id="lon" style="color: #fff;">--</span></div>
+            </div>
+
+            <button id="retry-btn" class="btn" onclick="shareLocation()" style="display: none;">
+                Retry Sync
             </button>
 
-            <div class="status-container">
-                <div id="coords" class="coordinates">
-                    LAT: <span id="lat">--</span><br>
-                    LON: <span id="lon">--</span>
-                </div>
-                <div id="status-msg" style="margin-top: 1rem; font-size: 0.85rem;"></div>
-                <a id="maps-link" href="#" target="_blank" class="maps-link" style="display: none;">View on Google Maps →</a>
+            <div class="footer-links">
+                <a href="/api/logout" class="link-item logout">Logout</a>
             </div>
+        </div>
+
+        <div class="map-card">
+            <div id="map"></div>
         </div>
     </div>
 
     <script>
+        let map, marker, targetCircle;
+        let roadLayers = L.featureGroup();
+
+        async function initMap(lat, lon) {
+            if (!map) {
+                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([lat, lon], 14);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+                roadLayers.addTo(map);
+
+                try {
+                    const res = await fetch('/api/get_target');
+                    const config = await res.json();
+                    
+                    if (config.road_name) {
+                        document.getElementById('app-title').innerText = config.road_name;
+                        document.getElementById('road-display').innerText = "Active monitoring enabled for this zone.";
+                    }
+
+                    if (config.balance !== undefined) {
+                        document.getElementById('wallet-balance').innerText = config.balance.toFixed(2);
+                    }
+                    
+                    if (config.mode === 'point') {
+                        targetCircle = L.circle([config.lat, config.lon], {
+                            color: '#6366f1', fillColor: '#6366f1', fillOpacity: 0.15, radius: config.radius
+                        }).addTo(map);
+                    } else if (config.routes && config.routes.length > 0) {
+                        config.routes.forEach(route => {
+                            const points = route.points || route;
+                            L.polyline(points, { color: '#6366f1', weight: 6, opacity: 0.6 }).addTo(roadLayers);
+                        });
+                        // Add a halo circle around current point for buffer visualization
+                        targetCircle = L.circle([lat, lon], {
+                            radius: config.radius, color: '#4ade80', weight: 1, fillOpacity: 0.1
+                        }).addTo(map);
+                        map.fitBounds(roadLayers.getBounds());
+                    }
+                } catch (e) {}
+
+                marker = L.marker([lat, lon]).addTo(map);
+            } else {
+                map.setView([lat, lon], 14);
+                marker.setLatLng([lat, lon]);
+                if (targetCircle) targetCircle.setLatLng([lat, lon]);
+            }
+        }
+
+
+
         async function shareLocation() {
-            const btn = document.getElementById('get-btn');
             const loader = document.getElementById('loader');
-            const btnText = document.getElementById('btn-text');
-            const coordsPanel = document.getElementById('coords');
             const statusMsg = document.getElementById('status-msg');
-            const mapsLink = document.getElementById('maps-link');
+            const retryBtn = document.getElementById('retry-btn');
+            const coordsPanel = document.getElementById('coords');
 
-            // Reset UI functions
-            function resetButton() {
-                btn.disabled = false;
-                loader.style.display = 'none';
-                btnText.innerText = 'Share My Location';
-            }
-
-            function showError(msg) {
-                statusMsg.innerText = msg;
-                statusMsg.style.color = "#f87171";
-                resetButton();
-            }
-
-            // Reset UI state
-            btn.disabled = true;
+            // Reset UI
             loader.style.display = 'block';
-            btnText.innerText = 'Locating...';
-            statusMsg.innerText = '';
+            retryBtn.style.display = 'none';
+            statusMsg.innerText = 'Acquiring GPS signal...';
             statusMsg.style.color = '#94a3b8';
 
             if (!navigator.geolocation) {
-                showError("Geolocation is not supported by your browser.");
+                statusMsg.innerText = "Geolocation not supported.";
+                statusMsg.style.color = "#f87171";
+                loader.style.display = 'none';
                 return;
             }
 
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const { latitude, longitude } = pos.coords;
                 
-                // Update Local UI
+                // Update UI & Map
                 document.getElementById('lat').innerText = latitude.toFixed(6);
                 document.getElementById('lon').innerText = longitude.toFixed(6);
                 coordsPanel.style.display = 'block';
-                mapsLink.href = `https://www.google.com/maps?q=${latitude},${longitude}`;
-                mapsLink.style.display = 'inline-block';
+                await initMap(latitude, longitude);
 
                 try {
                     statusMsg.innerText = "Syncing with secure server...";
-                    const response = await fetch("/location", { // Using relative path
+                    const response = await fetch("/location", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lat: latitude, lon: longitude })
@@ -232,23 +338,37 @@
 
                     if (response.ok) {
                         const data = await response.json();
-                        statusMsg.innerText = "✓ Sync successful: " + data.message;
-                        statusMsg.style.color = "#4ade80";
+                        const isAtCheckpoint = data.data.at_checkpoint;
+                        statusMsg.innerText = isAtCheckpoint ? "✓ Verified: Inside Target Zone" : "✓ Sync successful: Outside Zone";
+                        statusMsg.style.color = isAtCheckpoint ? "#4ade80" : "#94a3b8";
+                        loader.style.display = 'none';
+                        
+                        // Update balance
+                        if (data.data.balance !== undefined) {
+                            document.getElementById('wallet-balance').innerText = data.data.balance.toFixed(2);
+                        }
                     } else {
-                        throw new Error("Server responded with error");
+                        throw new Error("Server error");
                     }
                 } catch (err) {
-                    statusMsg.innerText = "⚠ Connected local, but sync failed.";
+                    statusMsg.innerText = "⚠ Sync failed. Local mode active.";
                     statusMsg.style.color = "#f87171";
-                } finally {
-                    resetButton();
+                    loader.style.display = 'none';
+                    retryBtn.style.display = 'flex';
                 }
 
             }, (err) => {
-                showError("Access denied or timeout. Please check permissions.");
-                resetButton();
+                statusMsg.innerText = "Access denied. Check permissions.";
+                statusMsg.style.color = "#f87171";
+                loader.style.display = 'none';
+                retryBtn.style.display = 'flex';
             }, { enableHighAccuracy: true, timeout: 10000 });
         }
+
+
+        // Auto-run on load
+        window.onload = shareLocation;
     </script>
 </body>
 </html>
+

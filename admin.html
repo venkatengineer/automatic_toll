@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Secure Tracking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a; --card: rgba(255, 255, 255, 0.05); --border: rgba(255, 255, 255, 0.1); --primary: #6366f1;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: white; margin: 0; padding: 2rem; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .grid { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; margin-bottom: 2rem; }
+        @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid var(--border); padding: 1.5rem; }
+        .map-container { height: 400px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: #1e293b; position: relative; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; color: #94a3b8; padding: 1rem; border-bottom: 2px solid var(--border); font-size: 0.85rem; }
+        td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .btn-logout { background: #f87171; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 12px; cursor: pointer; width: 100%; font-weight: 600; margin-top: 1rem; }
+        .maps-link { color: var(--primary); text-decoration: none; font-weight: 600; }
+        .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05rem; }
+        .status-at { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.2); }
+        .status-away { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.15); }
+        input, select { background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; margin-top: 5px; font-family: inherit; } 
+        label { font-size: 0.8rem; color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Admin Command Center</h1>
+        <a href="/api/logout" class="btn-logout">Logout</a>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h3 id="map-title" style="margin-top: 0;">Define Monitoring Zone</h3>
+            <p id="map-instructions" style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 1rem;">Click to set the target point.</p>
+            <div style="margin-bottom: 1rem; position: relative;">
+                <input type="text" id="map-search" placeholder="Search location (e.g. Chennai, India)" 
+                       style="padding-right: 40px; background: rgba(0,0,0,0.3);"
+                       onkeypress="if(event.key === 'Enter') searchLocation()">
+                <button onclick="searchLocation()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--primary); cursor: pointer; font-size: 1.1rem;">🔍</button>
+            </div>
+            <div id="admin-map" class="map-container"></div>
+        </div>
+        <div class="card">
+            <h3 style="margin-top: 0;">Configuration</h3>
+            <div style="margin-bottom: 1.5rem;">
+                <label>Monitoring Mode</label>
+                <select id="monitoring-mode" onchange="toggleMode()">
+                    <option value="point">Single Point Checkpoint</option>
+                    <option value="road">Road Segment Tracking</option>
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <label>Checkpoint/Road Name</label>
+                <input type="text" id="road-name-global" placeholder="e.g. Highway Toll Plaza">
+            </div>
+            
+            <div id="point-config">
+                <div style="margin-bottom: 1rem;">
+                    <label>Latitude</label>
+                    <input type="number" id="target-lat" step="any">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label>Longitude</label>
+                    <input type="number" id="target-lon" step="any">
+                </div>
+            </div>
+
+            <div id="road-config" style="display: none;">
+                <p id="road-instructions" style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem;">Click 'New Road' to start selecting a segment.</p>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button class="btn-save" style="margin-top: 0; font-size: 0.8rem; padding: 8px;" onclick="startNewRoad()">+ New Road</button>
+                    <button class="btn-save" style="margin-top: 0; font-size: 0.8rem; background: #64748b; padding: 8px;" onclick="clearAllRoads()">Clear All</button>
+                </div>
+                
+                <div id="active-roads-list" style="max-height: 150px; overflow-y: auto; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; padding: 5px;">
+                    <div style="font-size: 0.75rem; color: #64748b; text-align: center; padding: 10px;">No roads added yet</div>
+                </div>
+
+                <div id="selection-status" style="display: none; font-size: 0.75rem; color: #4ade80; margin-bottom: 1rem; padding: 8px; background: rgba(74, 222, 128, 0.1); border-radius: 6px;">
+                    Selecting: <span id="current-selection-step">Start Point</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label>Buffer Radius (meters)</label>
+                <input type="number" id="target-radius" value="50">
+            </div>
+            <button class="btn-save" onclick="saveTarget()">Apply Configuration</button>
+            <div id="save-status" style="margin-top: 1rem; font-size: 0.85rem; text-align: center;"></div>
+        </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns: 1fr; margin-bottom: 2rem;">
+        <div class="card">
+            <h3 style="margin-top: 0;">Wallet Management</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                <div style="flex: 1; min-width: 200px;">
+                    <label>Target Username</label>
+                    <input type="text" id="recharge-user" placeholder="e.g. john_doe">
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label>Aadhar Number</label>
+                    <input type="text" id="recharge-aadhar" placeholder="12 digit number">
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <label>Recharge Amount (₹)</label>
+                    <input type="number" id="recharge-amount" value="100">
+                </div>
+                <div style="flex: 0 0 200px;">
+                    <button class="btn-save" style="margin-top: 0;" onclick="rechargeWallet()">Process Recharge</button>
+                </div>
+            </div>
+            <div id="recharge-status" style="margin-top: 1rem; font-size: 0.85rem;"></div>
+        </div>
+    </div>
+
+
+    <div class="card" style="overflow-x: auto;">
+        <h3 style="margin-top: 0;">Real-time Activity Feed</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Timestamp</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="location-table">
+                <!-- Data will be loaded here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let adminMap, targetMarker, targetCircle;
+        let roadLayers = L.featureGroup(); // Group to hold all road polylines
+        let allRoutes = []; // List of all saved routes: [ [[lat,lon],...], ... ]
+        let roadNames = [];
+        
+        let startPt, endPt, currentRoute = [], roadName = "";
+        let selectionMode = 'none'; // 'none', 'point', 'start', 'end'
+
+        function toggleMode() {
+            const mode = document.getElementById('monitoring-mode').value;
+            document.getElementById('point-config').style.display = mode === 'point' ? 'block' : 'none';
+            document.getElementById('road-config').style.display = mode === 'road' ? 'block' : 'none';
+            document.getElementById('map-instructions').innerText = mode === 'point' ? 'Click to set target point.' : 'Manage multiple road segments below.';
+            selectionMode = mode === 'point' ? 'point' : 'none';
+            if (adminMap) setTimeout(() => adminMap.invalidateSize(), 100);
+        }
+
+        function startNewRoad() {
+            selectionMode = 'start';
+            document.getElementById('selection-status').style.display = 'block';
+            document.getElementById('current-selection-step').innerText = 'Start Point';
+            startPt = null; endPt = null;
+        }
+
+        function clearAllRoads() {
+            allRoutes = []; roadNames = [];
+            roadLayers.clearLayers();
+            updateRoadsList();
+        }
+
+        function updateRoadsList() {
+            const container = document.getElementById('active-roads-list');
+            if (allRoutes.length === 0) {
+                container.innerHTML = '<div style="font-size: 0.75rem; color: #64748b; text-align: center; padding: 10px;">No roads added yet</div>';
+                return;
+            }
+            container.innerHTML = allRoutes.map((r, i) => {
+                const points = r.points || r;
+                return `
+                    <div style="display: flex; flex-direction: column; padding: 10px; border-bottom: 1px solid var(--border); font-size: 0.75rem; gap: 5px; position: relative;" 
+                         class="road-item" onmouseenter="this.style.background='rgba(255,255,255,0.03)'" onmouseleave="this.style.background='none'">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <input type="text" value="${roadNames[i] || 'Unnamed Road'}" 
+                                   onchange="renameRoad(${i}, this.value)"
+                                   style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: white; padding: 4px 8px; border-radius: 4px; flex: 1; margin-right: 10px;">
+                            <div style="display: flex; gap: 5px;">
+                                <button onclick="highlightRoad(${i})" title="Highlight on Map" style="background: none; border: none; color: #4ade80; cursor: pointer; font-size: 1rem;">🎯</button>
+                                <button onclick="removeRoad(${i})" title="Remove" style="background: none; border: none; color: #f87171; cursor: pointer; font-weight: bold; font-size: 1.2rem;">&times;</button>
+                            </div>
+                        </div>
+                        <div style="color: #64748b; font-size: 0.65rem; cursor: pointer;" onclick="highlightRoad(${i})">Points: ${points.length} • Click to focus</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function highlightRoad(index) {
+            const layers = roadLayers.getLayers();
+            const targetLayer = layers[index];
+            if (targetLayer) {
+                adminMap.fitBounds(targetLayer.getBounds(), { padding: [50, 50] });
+                const originalStyle = { color: '#6366f1', weight: 5 };
+                targetLayer.setStyle({ color: '#4ade80', weight: 10 });
+                setTimeout(() => targetLayer.setStyle(originalStyle), 2000);
+            }
+        }
+
+        function renameRoad(index, newName) {
+            roadNames[index] = newName;
+        }
+
+        function removeRoad(index) {
+            allRoutes.splice(index, 1);
+            roadNames.splice(index, 1);
+            // Refresh layers
+            roadLayers.clearLayers();
+            allRoutes.forEach(r => L.polyline(r, {color: '#6366f1', weight: 5}).addTo(roadLayers));
+            updateRoadsList();
+        }
+
+        async function getRoute(p1, p2) {
+            const url = `https://router.project-osrm.org/route/v1/driving/${p1.lng},${p1.lat};${p2.lng},${p2.lat}?geometries=geojson&overview=full`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.code === 'Ok') {
+                    const routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                    const name = data.waypoints ? data.waypoints[0].name || data.waypoints[1].name || "Unnamed Road" : "Selected Route";
+                    
+                    // Add to permanent layers
+                    L.polyline(routeCoords, {color: '#6366f1', weight: 5}).addTo(roadLayers);
+                    allRoutes.push(routeCoords);
+                    roadNames.push(name);
+                    
+                    updateRoadsList();
+                    document.getElementById('selection-status').style.display = 'none';
+                    selectionMode = 'none';
+                }
+            } catch (e) { console.error("OSRM Error", e); }
+        }
+
+        async function initAdminMap() {
+            try {
+                const res = await fetch('/api/get_target');
+                if (!res.ok) throw new Error("Could not fetch target configuration");
+                const config = await res.json();
+                
+                const defaultLat = config.lat || 13.0827;
+                const defaultLon = config.lon || 80.2707;
+
+                adminMap = L.map('admin-map', { zoomControl: true, attributionControl: false }).setView([defaultLat, defaultLon], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(adminMap);
+                roadLayers.addTo(adminMap);
+
+                document.getElementById('monitoring-mode').value = config.mode || 'point';
+                document.getElementById('road-name-global').value = config.road_name || '';
+                toggleMode();
+
+                if (config.mode === 'point' && config.lat && config.lon) {
+                    targetMarker = L.marker([config.lat, config.lon]).addTo(adminMap);
+                    targetCircle = L.circle([config.lat, config.lon], { 
+                        radius: config.radius || 50, color: '#6366f1', fillOpacity: 0.1 
+                    }).addTo(adminMap);
+                } else if (config.routes && config.routes.length > 0) {
+                    allRoutes = config.routes;
+                    // Extract names if they are objects
+                    roadNames = allRoutes.map(r => r.name || 'Selected Route');
+                    allRoutes.forEach(r => {
+                        const points = r.points || r;
+                        L.polyline(points, {color: '#6366f1', weight: 5}).addTo(roadLayers);
+                    });
+                    updateRoadsList();
+                    adminMap.fitBounds(roadLayers.getBounds());
+                }
+
+                adminMap.on('click', async function(e) {
+                    if (selectionMode === 'point') {
+                        if (targetMarker) targetMarker.setLatLng(e.latlng);
+                        else targetMarker = L.marker(e.latlng).addTo(adminMap);
+                        
+                        if (targetCircle) targetCircle.setLatLng(e.latlng);
+                        else targetCircle = L.circle(e.latlng, {
+                            radius: parseInt(document.getElementById('target-radius').value) || 50, color: '#6366f1'
+                        }).addTo(adminMap);
+                        
+                        document.getElementById('target-lat').value = e.latlng.lat.toFixed(6);
+                        document.getElementById('target-lon').value = e.latlng.lng.toFixed(6);
+                    } else if (selectionMode === 'start') {
+                        startPt = e.latlng;
+                        selectionMode = 'end';
+                        document.getElementById('current-selection-step').innerText = 'End Point';
+                        L.circleMarker(e.latlng, {radius: 5, color: '#4ade80'}).addTo(roadLayers);
+                    } else if (selectionMode === 'end') {
+                        endPt = e.latlng;
+                        await getRoute(startPt, endPt);
+                    }
+                });
+                
+                setTimeout(() => adminMap.invalidateSize(), 500);
+            } catch (err) { console.error("Map initialization failed:", err); }
+        }
+
+        async function searchLocation() {
+            const query = document.getElementById('map-search').value;
+            if (!query) return;
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+            try {
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.length > 0) {
+                    const { lat, lon } = data[0];
+                    adminMap.setView([lat, lon], 15);
+                    L.popup().setLatLng([lat, lon]).setContent(`<b>Search Result:</b><br>${data[0].display_name}`).openOn(adminMap);
+                } else { alert("Location not found"); }
+            } catch (e) { alert("Search error. Check your connection."); }
+        }
+
+        async function saveTarget() {
+            const status = document.getElementById('save-status');
+            const mode = document.getElementById('monitoring-mode').value;
+            const data = {
+                mode: mode,
+                radius: parseInt(document.getElementById('target-radius').value),
+            };
+
+            if (mode === 'point') {
+                data.lat = parseFloat(document.getElementById('target-lat').value);
+                data.lon = parseFloat(document.getElementById('target-lon').value);
+                data.road_name = document.getElementById('road-name-global').value;
+            } else {
+                // Map routes to include names
+                data.routes = allRoutes.map((r, i) => ({
+                    name: roadNames[i] || `Road ${i+1}`,
+                    points: r.points || r
+                }));
+                data.road_name = document.getElementById('road-name-global').value;
+                if (data.routes.length === 0) { alert("Please add at least one road segment"); return; }
+            }
+
+            status.innerText = "Applying configuration...";
+            try {
+                const res = await fetch('/api/set_target', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                if(res.ok) {
+                    status.innerText = "✓ Multi-road configuration saved";
+                    status.style.color = "#4ade80";
+                }
+            } catch (e) { status.innerText = "Error saving"; }
+        }
+
+
+        async function loadLocations() {
+            try {
+                const res = await fetch('/api/locations');
+                const data = await res.json();
+                const tbody = document.getElementById('location-table');
+                tbody.innerHTML = data.map(loc => `
+                    <tr>
+                        <td style="font-weight: 600;">${loc.username || 'System'}</td>
+                        <td>${loc.latitude.toFixed(6)}</td>
+                        <td>${loc.longitude.toFixed(6)}</td>
+                        <td style="font-size: 0.85rem; color: #94a3b8;">${new Date(loc.timestamp).toLocaleString()}</td>
+                        <td><span class="badge ${loc.is_at_checkpoint ? 'status-at' : 'status-away'}">${loc.is_at_checkpoint ? 'TRACKING' : 'OUTSIDE'}</span></td>
+                        <td><a href="https://www.google.com/maps?q=${loc.latitude},${loc.longitude}" target="_blank" class="maps-link">View Map</a></td>
+                    </tr>
+                `).join('');
+            } catch (err) {}
+        }
+
+        async function rechargeWallet() {
+            const user = document.getElementById('recharge-user').value;
+            const aadhar = document.getElementById('recharge-aadhar').value;
+            const amount = document.getElementById('recharge-amount').value;
+            const status = document.getElementById('recharge-status');
+
+            if (!user || !aadhar || !amount) {
+                status.innerText = "❌ Please fill all fields";
+                status.style.color = "#f87171";
+                return;
+            }
+
+            status.innerText = "Processing...";
+            try {
+                const res = await fetch('/api/recharge', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username: user, aadhar: aadhar, amount: amount })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    status.innerText = `✅ Success: Added ₹${amount} to ${user}'s wallet. New balance: ₹${data.new_balance}`;
+                    status.style.color = "#4ade80";
+                    // Clear fields
+                    document.getElementById('recharge-user').value = '';
+                    document.getElementById('recharge-aadhar').value = '';
+                } else {
+                    status.innerText = "❌ " + data.message;
+                    status.style.color = "#f87171";
+                }
+            } catch (e) {
+                status.innerText = "❌ Connection failed";
+                status.style.color = "#f87171";
+            }
+        }
+
+        initAdminMap();
+        loadLocations();
+        setInterval(loadLocations, 10000);
+    </script>
+
+
+</body>
+</html>
