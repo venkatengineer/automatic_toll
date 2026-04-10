@@ -198,6 +198,11 @@
                         config.routes.forEach(route => {
                             const points = route.points || route;
                             L.polyline(points, { color: '#0ea5e9', weight: 6, opacity: 0.6 }).addTo(roadLayers);
+                            // Add markers for start and end points
+                            if (points.length > 0) {
+                                L.circleMarker(points[0], { radius: 4, color: '#10b981', fillOpacity: 0.8 }).addTo(roadLayers);
+                                L.circleMarker(points[points.length - 1], { radius: 4, color: '#ef4444', fillOpacity: 0.8 }).addTo(roadLayers);
+                            }
                         });
                         // Add a halo circle around current point for buffer visualization
                         targetCircle = L.circle([lat, lon], {

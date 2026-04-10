@@ -145,7 +145,7 @@
     </div>
 
     <script>
-        let adminMap, targetMarker, targetCircle;
+        let adminMap, targetMarker, targetCircle, hoverMarker;
         let roadLayers = L.featureGroup(); // Group to hold all road polylines
         let allRoutes = []; // List of all saved routes: [ [[lat,lon],...], ... ]
         let roadNames = [];
@@ -221,7 +221,14 @@
             roadNames.splice(index, 1);
             // Refresh layers
             roadLayers.clearLayers();
-            allRoutes.forEach(r => L.polyline(r, {color: '#6366f1', weight: 5}).addTo(roadLayers));
+            allRoutes.forEach(r => {
+                const points = r.points || r;
+                L.polyline(points, {color: '#6366f1', weight: 5}).addTo(roadLayers);
+                if (points.length > 0) {
+                    L.circleMarker(points[0], { radius: 5, color: '#4ade80' }).addTo(roadLayers);
+                    L.circleMarker(points[points.length - 1], { radius: 5, color: '#f87171' }).addTo(roadLayers);
+                }
+            });
             updateRoadsList();
         }
 
@@ -275,10 +282,40 @@
                     allRoutes.forEach(r => {
                         const points = r.points || r;
                         L.polyline(points, {color: '#0ea5e9', weight: 5}).addTo(roadLayers);
+                        if (points.length > 0) {
+                            L.circleMarker(points[0], { radius: 5, color: '#4ade80' }).addTo(roadLayers);
+                            L.circleMarker(points[points.length - 1], { radius: 5, color: '#f87171' }).addTo(roadLayers);
+                        }
                     });
                     updateRoadsList();
                     adminMap.fitBounds(roadLayers.getBounds());
                 }
+
+                adminMap.on('mousemove', function(e) {
+                    if (selectionMode === 'none') {
+                        if (hoverMarker) adminMap.removeLayer(hoverMarker);
+                        hoverMarker = null;
+                        return;
+                    }
+
+                    let color = '#0ea5e9'; // Default blue
+                    if (selectionMode === 'start') color = '#4ade80'; // Green
+                    if (selectionMode === 'end') color = '#f87171'; // Red
+
+                    if (!hoverMarker) {
+                        hoverMarker = L.circleMarker(e.latlng, { radius: 6, color: color, fillOpacity: 0.5, dashArray: '5, 5' }).addTo(adminMap);
+                    } else {
+                        hoverMarker.setLatLng(e.latlng);
+                        hoverMarker.setStyle({ color: color });
+                    }
+                });
+
+                adminMap.on('mouseout', function() {
+                    if (hoverMarker) {
+                        adminMap.removeLayer(hoverMarker);
+                        hoverMarker = null;
+                    }
+                });
 
                 adminMap.on('click', async function(e) {
                     if (selectionMode === 'point') {
@@ -299,6 +336,11 @@
                         L.circleMarker(e.latlng, {radius: 5, color: '#4ade80'}).addTo(roadLayers);
                     } else if (selectionMode === 'end') {
                         endPt = e.latlng;
+                        L.circleMarker(e.latlng, {radius: 5, color: '#f87171'}).addTo(roadLayers);
+                        if (hoverMarker) {
+                            adminMap.removeLayer(hoverMarker);
+                            hoverMarker = null;
+                        }
                         await getRoute(startPt, endPt);
                     }
                 });
