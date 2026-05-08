@@ -1,0 +1,14 @@
+services:
+  app:
+    build: .
+    ports:
+      - "7000:7000"
+    environment:
+      SECRET_KEY: "change-this-secret"
+      DATABASE_PATH: "/app/data/locations.db"
+    volumes:
+      - app-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  app-data:
