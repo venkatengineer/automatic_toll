@@ -31,7 +31,8 @@
         }
 
         @media (max-width: 768px) {
-            .container { flex-direction: column; align-items: center; overflow-y: auto; height: 100vh; padding: 1rem; }
+            .container { flex-direction: column; align-items: stretch; overflow-y: auto; height: auto; min-height: 100vh; padding: 1rem; }
+            body { overflow-y: auto; }
         }
 
         .blob {
@@ -57,7 +58,7 @@
 
         .map-card {
             background: var(--card); border-radius: 40px; border: 1px solid var(--border); backdrop-filter: blur(12px);
-            flex: 1; min-height: 450px; overflow: hidden; position: relative;
+            flex: 1; min-height: 450px; width: 100%; overflow: hidden; position: relative;
             box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.5);
             animation: slideInRight 1s cubic-bezier(0.16, 1, 0.3, 1);
         }
@@ -78,6 +79,13 @@
         .status-indicator.active { background: var(--primary-green); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2); }
         .status-indicator.loading { background: var(--primary-blue); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        .crossing-alert {
+            display: none; margin-bottom: 1.5rem; padding: 1rem; border-radius: 18px;
+            background: rgba(34, 197, 94, 0.16); border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #bbf7d0; text-align: left; font-size: 0.9rem; line-height: 1.4;
+        }
+        .crossing-alert strong { display: block; color: #ffffff; margin-bottom: 0.25rem; }
 
         .wallet-nav {
             text-decoration: none; display: block; margin-bottom: 1.5rem;
@@ -107,6 +115,46 @@
         }
         .btn:hover { transform: translateY(-3px); box-shadow: 0 25px 40px -10px rgba(14, 165, 233, 0.5); }
         .btn:active { transform: translateY(0); }
+
+        .refresh-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text);
+            padding: 8px 12px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+            font-size: 0.8rem; font-weight: 700; transition: 0.3s;
+        }
+        .refresh-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--primary-blue); }
+        .refresh-btn svg { transition: transform 0.6s ease; }
+        .refresh-btn:active svg { transform: rotate(180deg); }
+
+        .refresh-action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+        }
+        .refresh-action-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-color: var(--primary-blue);
+        }
+        .refresh-action-btn svg {
+            transition: transform 0.5s;
+        }
+        .refresh-action-btn:active svg {
+            transform: rotate(180deg);
+        }
+        .refresh-spinning svg {
+            animation: spin 1s linear infinite;
+        }
 
         .loader {
             width: 18px; height: 18px; border: 2.5px solid rgba(14, 165, 233, 0.2);
@@ -166,6 +214,43 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             object-fit: cover; filter: brightness(0.15) saturate(1.5); z-index: 0;
         }
+
+        /* Crossing Marker Styles */
+        .crossing-marker {
+            position: relative;
+            width: 30px;
+            height: 30px;
+            background: #ef4444;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: crossing-pulse 1.2s infinite;
+        }
+        @keyframes crossing-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); transform: scale(1); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); transform: scale(1.1); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); transform: scale(1); }
+        }
+
+        .event-log {
+            margin-top: 1.5rem; text-align: left;
+            max-height: 200px; overflow-y: auto;
+            padding-right: 5px;
+        }
+        .event-log h3 { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .event-item {
+            padding: 0.75rem; border-radius: 12px; background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border); margin-bottom: 0.5rem; font-size: 0.8rem;
+            display: flex; justify-content: space-between; align-items: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .event-type { font-weight: 800; padding: 2px 6px; border-radius: 6px; font-size: 0.65rem; }
+        .type-entry { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .type-exit { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .event-time { color: var(--muted); font-size: 0.7rem; }
     </style>
 </head>
 <body>
@@ -192,8 +277,23 @@
             
             <div class="status-box">
                 <div id="status-ind" class="status-indicator loading"></div>
-                <div id="status-msg" style="font-size: 0.9rem; font-weight: 600; color: var(--muted);">Initializing system...</div>
-                <div id="loader" class="loader" style="margin-left: auto; display: block;"></div>
+                <div style="flex: 1;">
+                    <div id="status-msg" style="font-size: 0.9rem; font-weight: 600; color: var(--muted);">Initializing system...</div>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-top: 2px;">
+                        <div id="last-sync-time" style="font-size: 0.65rem; color: var(--muted);">Syncing...</div>
+                        <div id="accuracy-badge" style="font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); display: none;">-- m</div>
+                    </div>
+                </div>
+                <button id="main-refresh-btn" class="refresh-action-btn" onclick="manualRefresh()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                    Refresh
+                </button>
+                <div id="loader" class="loader" style="display: none;"></div>
+            </div>
+
+            <div id="crossing-alert" class="crossing-alert">
+                <strong>Marked road crossing detected</strong>
+                <span id="crossing-alert-text">You are inside the monitored road segment.</span>
             </div>
 
             <a href="/wallet" class="wallet-nav">
@@ -209,6 +309,13 @@
             <div id="coords" class="coordinates" style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1);">
                 <div><span class="label">LAT</span> <span id="lat" style="color: var(--text);">--</span></div>
                 <div style="margin-top: 0.5rem;"><span class="label">LON</span> <span id="lon" style="color: var(--text);">--</span></div>
+            </div>
+
+            <div class="event-log">
+                <h3><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg> Crossing History</h3>
+                <div id="event-list">
+                    <div style="color: var(--muted); font-size: 0.75rem; padding: 10px; text-align: center;">No activity recorded yet</div>
+                </div>
             </div>
 
             <button id="retry-btn" class="btn" onclick="shareLocation()" style="display: none;">
@@ -230,137 +337,307 @@
     <script>
         let map, marker, targetCircle;
         let roadLayers = L.featureGroup();
+        let wasAtCheckpoint = false;
+        let lastNotifiedRoad = "";
+        let lastNotificationAt = 0;
+        let watchId = null;
+        let isSyncing = false;
+        let appConfig = null; // Global config storage
+
+        let crossingIcon = L.divIcon({
+            className: 'crossing-marker',
+            html: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        async function fetchSystemConfig() {
+            try {
+                const res = await fetch('/api/get_target');
+                if (!res.ok) throw new Error("Config fetch failed");
+                appConfig = await res.json();
+                updateUIWithConfig();
+                return appConfig;
+            } catch (e) {
+                console.error("Config load error", e);
+                return null;
+            }
+        }
+
+        function updateUIWithConfig() {
+            if (!appConfig) return;
+            
+            if (appConfig.username) {
+                document.getElementById('app-title').innerText = `Hello, ${appConfig.username}`;
+            }
+
+            if (appConfig.road_name) {
+                document.getElementById('road-display').innerText = `Zone: ${appConfig.road_name}`;
+            }
+
+            if (appConfig.balance !== undefined) {
+                document.getElementById('wallet-balance').innerText = appConfig.balance.toFixed(2);
+            }
+
+            // Update map if it exists
+            if (map) {
+                roadLayers.clearLayers();
+                if (appConfig.mode === 'point' && appConfig.lat && appConfig.lon) {
+                    if (targetCircle) map.removeLayer(targetCircle);
+                    targetCircle = L.circle([appConfig.lat, appConfig.lon], {
+                        color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.15, radius: appConfig.radius
+                    }).addTo(map);
+                } else if (appConfig.routes && appConfig.routes.length > 0) {
+                    appConfig.routes.forEach(route => {
+                        const points = route.points || route;
+                        L.polyline(points, { color: '#0ea5e9', weight: 6, opacity: 0.6 }).addTo(roadLayers);
+                        if (points.length > 0) {
+                            L.circleMarker(points[0], { radius: 4, color: '#10b981', fillOpacity: 0.8 }).addTo(roadLayers);
+                            L.circleMarker(points[points.length - 1], { radius: 4, color: '#ef4444', fillOpacity: 0.8 }).addTo(roadLayers);
+                        }
+                    });
+                }
+            }
+        }
 
         async function initMap(lat, lon) {
             if (!map) {
-                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([lat, lon], 14);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+                const startLat = lat || (appConfig ? appConfig.lat : 13.0827);
+                const startLon = lon || (appConfig ? appConfig.lon : 80.2707);
+                
+                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([startLat, startLon], 14);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
                 roadLayers.addTo(map);
+                
+                updateUIWithConfig();
 
-                try {
-                    const res = await fetch('/api/get_target');
-                    const config = await res.json();
-                    
-                    if (config.username) {
-                        document.getElementById('app-title').innerText = `Hello, ${config.username}`;
-                    }
+                if (lat && lon) {
+                    marker = L.marker([lat, lon]).addTo(map);
+                }
+                
+                setTimeout(() => map.invalidateSize(), 100);
+            } else if (lat && lon) {
+                // Update marker position
+                if (!marker) marker = L.marker([lat, lon]).addTo(map);
+                else marker.setLatLng([lat, lon]);
 
-                    if (config.road_name) {
-                        document.getElementById('road-display').innerText = `Current Zone: ${config.road_name}`;
-                    }
+                // Smoothly move map if it's too far from the center
+                const currentCenter = map.getCenter();
+                const distToCenter = currentCenter.distanceTo(L.latLng(lat, lon));
+                if (distToCenter > 150) { // Only pan if user moved more than 150m from center
+                    map.panTo([lat, lon], { animate: true });
+                }
+            }
+        }
 
-                    if (config.balance !== undefined) {
-                        document.getElementById('wallet-balance').innerText = config.balance.toFixed(2);
-                    }
-                    
-                    if (config.mode === 'point') {
-                        targetCircle = L.circle([config.lat, config.lon], {
-                            color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 0.15, radius: config.radius
-                        }).addTo(map);
-                    } else if (config.routes && config.routes.length > 0) {
-                        config.routes.forEach(route => {
-                            const points = route.points || route;
-                            L.polyline(points, { color: '#0ea5e9', weight: 6, opacity: 0.6 }).addTo(roadLayers);
-                            // Add markers for start and end points
-                            if (points.length > 0) {
-                                L.circleMarker(points[0], { radius: 4, color: '#10b981', fillOpacity: 0.8 }).addTo(roadLayers);
-                                L.circleMarker(points[points.length - 1], { radius: 4, color: '#ef4444', fillOpacity: 0.8 }).addTo(roadLayers);
-                            }
-                        });
-                        // Add a halo circle around current point for buffer visualization
-                        targetCircle = L.circle([lat, lon], {
-                            radius: config.radius, color: '#22c55e', weight: 1, fillOpacity: 0.1
-                        }).addTo(map);
-                        map.fitBounds(roadLayers.getBounds());
-                    }
-                } catch (e) {}
+        async function loadEvents() {
+            try {
+                const res = await fetch('/api/events');
+                const events = await res.json();
+                const container = document.getElementById('event-list');
+                if (events.length === 0) return;
 
-                marker = L.marker([lat, lon]).addTo(map);
-            } else {
-                map.setView([lat, lon], 14);
-                marker.setLatLng([lat, lon]);
-                if (targetCircle) targetCircle.setLatLng([lat, lon]);
+                container.innerHTML = events.slice(0, 10).map(ev => {
+                    const time = new Date(ev.timestamp).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' });
+                    return `
+                        <div class="event-item">
+                            <div>
+                                <span class="event-type ${ev.event_type === 'ENTRY' ? 'type-entry' : 'type-exit'}">${ev.event_type}</span>
+                                <span style="margin-left: 8px; font-weight: 600;">${ev.road_name || 'Toll Zone'}</span>
+                            </div>
+                            <div class="event-time">${time}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) { console.error("Error loading events", e); }
+        }
+
+
+        function showCrossingNotification(roadName) {
+            const name = roadName || 'marked road';
+            const now = Date.now();
+            const shouldNotify = !wasAtCheckpoint || lastNotifiedRoad !== name || now - lastNotificationAt > 60000;
+
+            const alertBox = document.getElementById('crossing-alert');
+            document.getElementById('crossing-alert-text').innerText = `You are crossing ${name}. Please proceed carefully.`;
+            alertBox.style.display = 'block';
+
+            if (!shouldNotify) return;
+            lastNotifiedRoad = name;
+            lastNotificationAt = now;
+
+            if ('Notification' in window) {
+                if (Notification.permission === 'granted') {
+                    new Notification('Marked road crossing detected', { body: `You are crossing ${name}.` });
+                } else if (Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            new Notification('Marked road crossing detected', { body: `You are crossing ${name}.` });
+                        }
+                    });
+                }
             }
         }
 
 
 
-        async function shareLocation() {
+        async function shareLocation(pos) {
+            if (isSyncing) return;
+            isSyncing = true;
+            
             const loader = document.getElementById('loader');
             const statusMsg = document.getElementById('status-msg');
             const retryBtn = document.getElementById('retry-btn');
             const coordsPanel = document.getElementById('coords');
+            const refreshBtn = document.getElementById('main-refresh-btn');
+            const lastSync = document.getElementById('last-sync-time');
 
-            // Reset UI
-            loader.style.display = 'block';
-            retryBtn.style.display = 'none';
-            statusMsg.innerText = 'Acquiring GPS signal...';
+            // Update UI State
+            refreshBtn.classList.add('refresh-spinning');
             statusMsg.style.color = '#94a3b8';
 
-            if (!navigator.geolocation) {
-                statusMsg.innerText = "Geolocation not supported.";
-                statusMsg.style.color = "#f87171";
-                loader.style.display = 'none';
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const { latitude, longitude } = pos.coords;
+            try {
+                const { latitude, longitude, accuracy } = pos.coords;
                 
+                // Update Accuracy UI
+                const accBadge = document.getElementById('accuracy-badge');
+                accBadge.style.display = 'block';
+                accBadge.innerText = `±${Math.round(accuracy)}m`;
+                if (accuracy < 20) accBadge.style.borderColor = '#10b981';
+                else if (accuracy < 100) accBadge.style.borderColor = '#eab308';
+                else accBadge.style.borderColor = '#ef4444';
+
                 // Update UI & Map
                 document.getElementById('lat').innerText = latitude.toFixed(6);
                 document.getElementById('lon').innerText = longitude.toFixed(6);
                 coordsPanel.style.display = 'block';
                 await initMap(latitude, longitude);
 
-                try {
-                    statusMsg.innerText = "Syncing with secure server...";
-                    const response = await fetch("/location", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ lat: latitude, lon: longitude })
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        const isAtCheckpoint = data.data.at_checkpoint;
-                        statusMsg.innerText = isAtCheckpoint ? "Verified: Inside Segment" : "Sync Success: Active";
-                        statusMsg.style.color = isAtCheckpoint ? "#10b981" : "var(--muted)";
-                        document.getElementById('status-ind').className = "status-indicator active";
-                        loader.style.display = 'none';
-                        
-                        // Update balance
-                        if (data.data.balance !== undefined) {
-                            document.getElementById('wallet-balance').innerText = data.data.balance.toFixed(2);
-                        }
-                    } else {
-                        throw new Error("Server error");
-                    }
-                } catch (error) {
-                    console.error("Sync error:", error);
-                    statusMsg.innerText = "Connection Interrupted";
-                    statusMsg.style.color = "#ef4444";
-                    document.getElementById('status-ind').className = "status-indicator";
-                    document.getElementById('retry-btn').style.display = 'flex';
-                    loader.style.display = 'none';
+                // Update target circle to reflect accuracy area if we are in road mode
+                if (map && !appConfig?.mode === 'point') {
+                    if (targetCircle) targetCircle.setLatLng([latitude, longitude]).setRadius(accuracy);
+                    else targetCircle = L.circle([latitude, longitude], { radius: accuracy, color: '#10b981', weight: 1, fillOpacity: 0.1 }).addTo(map);
                 }
-            }, (error) => {
-                statusMsg.innerText = "GPS Access Denied";
+
+                const response = await fetch("/location", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ lat: latitude, lon: longitude })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const isAtCheckpoint = data.data.at_checkpoint;
+                    const roadName = data.data.road_name || 'marked road';
+                    
+                    statusMsg.innerText = isAtCheckpoint ? `Crossing: ${roadName}` : "Tracking Active";
+                    statusMsg.style.color = isAtCheckpoint ? "#10b981" : "var(--muted)";
+                    document.getElementById('status-ind').className = "status-indicator active";
+                    
+                    const now = new Date();
+                    lastSync.innerText = `Last synced: ${now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })}`;
+
+                    if (isAtCheckpoint) {
+                        showCrossingNotification(roadName);
+                        marker.setIcon(crossingIcon);
+                    } else {
+                        wasAtCheckpoint = false;
+                        document.getElementById('crossing-alert').style.display = 'none';
+                        marker.setIcon(new L.Icon.Default());
+                    }
+                    
+                    if (data.data.balance !== undefined) {
+                        document.getElementById('wallet-balance').innerText = data.data.balance.toFixed(2);
+                    }
+                    if (isAtCheckpoint) wasAtCheckpoint = true;
+                    
+                    loadEvents();
+                } else {
+                    throw new Error("Server error");
+                }
+            } catch (error) {
+                console.error("Sync error:", error);
+                statusMsg.innerText = "Connection Interrupted";
                 statusMsg.style.color = "#ef4444";
                 document.getElementById('status-ind').className = "status-indicator";
-                loader.style.display = 'none';
-            }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+                document.getElementById('retry-btn').style.display = 'flex';
+            } finally {
+                isSyncing = false;
+                refreshBtn.classList.remove('refresh-spinning');
+            }
+        }
+
+        function startTracking(highAccuracy = true) {
+            if (!navigator.geolocation) {
+                document.getElementById('status-msg').innerText = "Browser doesn't support GPS";
+                return;
+            }
+
+            document.getElementById('status-msg').innerText = "Locating satellites...";
+            document.getElementById('status-ind').className = "status-indicator loading";
+
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => shareLocation(pos),
+                (err) => {
+                    console.warn("GPS Attempt failed:", err.message, "HighAccuracy:", highAccuracy);
+                    if (highAccuracy && err.code === 3) {
+                        // Timeout on high accuracy, try low accuracy fallback
+                        console.log("Falling back to low accuracy GPS...");
+                        startTracking(false);
+                    } else {
+                        const msg = err.code === 1 ? "GPS Permission Denied" : "GPS Signal Lost";
+                        document.getElementById('status-msg').innerText = msg;
+                        document.getElementById('status-msg').style.color = "#ef4444";
+                        document.getElementById('status-ind').className = "status-indicator";
+                    }
+                },
+                { 
+                    enableHighAccuracy: highAccuracy, 
+                    timeout: highAccuracy ? 15000 : 30000, 
+                    maximumAge: 0 
+                }
+            );
+        }
+
+        function manualRefresh() {
+            const refreshBtn = document.getElementById('main-refresh-btn');
+            refreshBtn.classList.add('refresh-spinning');
+            
+            // Get current position once to force a sync immediately
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    shareLocation(pos);
+                    startTracking(); // Restart watcher too
+                },
+                (err) => {
+                    console.error("Manual refresh failed", err);
+                    startTracking();
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
         }
 
 
         // Auto-run on load
-        window.onload = () => {
-            shareLocation();
+        window.onload = async () => {
+            // 1. Fetch config first to update UI immediately
+            fetchSystemConfig();
+            
+            // 2. Init map with default view (doesn't wait for GPS)
+            initMap(null, null); 
+            
+            startTracking();
+            loadEvents();
+            setInterval(loadEvents, 30000);
+            
             const splash = document.getElementById('splash-screen');
             setTimeout(() => {
                 splash.classList.add('splash-hidden');
-            }, 1500);
+                if (map) map.invalidateSize();
+            }, 1200);
         };
     </script>
 </body>
 </html>
-

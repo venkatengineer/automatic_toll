@@ -83,6 +83,37 @@
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             object-fit: cover; filter: brightness(0.15) saturate(1.5); z-index: 0;
         }
+
+        /* Crossing Animation */
+        .crossing-dot {
+            display: inline-block; width: 8px; height: 8px; background: #ef4444; 
+            border-radius: 50%; margin-right: 8px;
+            box-shadow: 0 0 10px #ef4444;
+            animation: dot-pulse 1s infinite;
+        }
+        @keyframes dot-pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .event-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-top: 2rem; }
+        .event-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; }
+        .event-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--border); }
+        .event-item:last-child { border-bottom: none; }
+        .type-badge { padding: 4px 10px; border-radius: 8px; font-size: 0.65rem; font-weight: 800; }
+        .type-entry { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .type-exit { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .refresh-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text);
+            padding: 8px 16px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+            font-size: 0.85rem; font-weight: 700; transition: 0.3s;
+        }
+        .refresh-btn:hover { background: rgba(255,255,255,0.1); border-color: var(--primary-blue); }
+        .refresh-btn svg { transition: transform 0.6s ease; }
+        .refresh-btn:active svg { transform: rotate(180deg); }
+        .refresh-spinning svg { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -103,7 +134,13 @@
     </div>
     <div class="header">
         <h1>Admin Command Center</h1>
-        <a href="/api/logout" class="btn-logout">Logout</a>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button id="admin-refresh-btn" class="refresh-btn" onclick="manualRefresh()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+                Refresh
+            </button>
+            <a href="/api/logout" class="btn-logout">Logout</a>
+        </div>
     </div>
 
     <div class="grid">
@@ -170,6 +207,18 @@
     </div>
 
     <div class="grid" style="grid-template-columns: 1fr; margin-bottom: 2rem;">
+        <a href="/admin/crossings" style="text-decoration: none; margin-bottom: 1rem; display: block;">
+            <div class="card" style="background: linear-gradient(135deg, rgba(34,197,94,0.06), rgba(14,165,233,0.05)); border: 2px dashed rgba(34,197,94,0.22); display: flex; align-items: center; justify-content: space-between; transition: 0.3s; cursor: pointer;">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="font-size: 2.5rem;">🛣️</div>
+                    <div>
+                        <h3 style="margin: 0; color: var(--text);">Road Crossing Monitor</h3>
+                        <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: var(--muted);">Filter marked-road crossing records by road or search by username.</p>
+                    </div>
+                </div>
+                <div style="font-size: 1.5rem; color: var(--primary-green);">➔</div>
+            </div>
+        </a>
         <a href="/admin/wallet" style="text-decoration: none;">
             <div class="card" style="background: linear-gradient(135deg, rgba(14,165,233,0.05), rgba(34,197,94,0.05)); border: 2px dashed rgba(14,165,233,0.2); display: flex; align-items: center; justify-content: space-between; transition: 0.3s; cursor: pointer;">
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
@@ -205,12 +254,40 @@
         </table>
     </div>
 
+    <div class="event-grid">
+        <div class="event-card">
+            <h3 style="margin-top: 0; display: flex; align-items: center; gap: 0.75rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+                System Crossing Log
+            </h3>
+            <div id="global-event-log">
+                <p style="color: var(--muted); text-align: center; padding: 2rem;">No crossing events detected yet.</p>
+            </div>
+        </div>
+    </div>
+
     <script>
         let adminMap, targetMarker, targetCircle, hoverMarker;
         let roadLayers = L.featureGroup(); // Group to hold all road polylines
+        let userLayers = L.layerGroup(); // Group to hold all user markers
+        let userMarkers = {}; // Store markers by username
         let allRoutes = []; // List of all saved routes: [ [[lat,lon],...], ... ]
         let roadNames = [];
         let roadPrices = [];
+
+        const carIcon = L.divIcon({
+            className: 'custom-car-icon',
+            html: `
+                <div style="background: white; border-radius: 50%; padding: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); border: 2px solid var(--primary-blue); display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
+                        <circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>
+                    </svg>
+                </div>`,
+            iconSize: [34, 34],
+            iconAnchor: [17, 17],
+            popupAnchor: [0, -17]
+        });
         
         let startPt, endPt, currentRoute = [], roadName = "";
         let selectionMode = 'none'; // 'none', 'point', 'start', 'end'
@@ -336,6 +413,7 @@
                 adminMap = L.map('admin-map', { zoomControl: true, attributionControl: false }).setView([defaultLat, defaultLon], 13);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(adminMap);
                 roadLayers.addTo(adminMap);
+                userLayers.addTo(adminMap);
 
                 document.getElementById('monitoring-mode').value = config.mode || 'point';
                 document.getElementById('road-name-global').value = config.road_name || '';
@@ -479,17 +557,144 @@
                 const res = await fetch('/api/locations');
                 const data = await res.json();
                 const tbody = document.getElementById('location-table');
-                tbody.innerHTML = data.map(loc => `
-                    <tr>
-                        <td style="font-weight: 600;">${loc.username || 'System'}</td>
-                        <td>${loc.latitude.toFixed(6)}</td>
-                        <td>${loc.longitude.toFixed(6)}</td>
-                        <td style="font-size: 0.85rem; color: #94a3b8;">${new Date(loc.timestamp).toLocaleString()}</td>
-                        <td><span class="badge ${loc.is_at_checkpoint ? 'status-at' : 'status-away'}">${loc.is_at_checkpoint ? 'TRACKING' : 'OUTSIDE'}</span></td>
-                        <td><a href="https://www.google.com/maps?q=${loc.latitude},${loc.longitude}" target="_blank" class="maps-link">View Map</a></td>
-                    </tr>
-                `).join('');
-            } catch (err) {}
+                
+                const now = new Date();
+                const STALE_THRESHOLD = 2 * 60 * 1000; // 2 minutes
+
+                // Track users seen in this update to remove stale ones
+                const currentUsers = new Set();
+                
+                // Get latest location for each user
+                const latestPerUser = {};
+                data.forEach(loc => {
+                    const uname = loc.username || 'System';
+                    const locTime = new Date(loc.timestamp);
+                    if (!latestPerUser[uname] || locTime > new Date(latestPerUser[uname].timestamp)) {
+                        latestPerUser[uname] = loc;
+                    }
+                });
+
+                tbody.innerHTML = Object.values(latestPerUser)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .map(loc => {
+                        const username = loc.username || 'System';
+                        const locTime = new Date(loc.timestamp);
+                        const isStale = (now - locTime) > STALE_THRESHOLD;
+                        
+                        // If user is stale, don't show on map but maybe keep in table as "Offline"
+                        if (isStale) {
+                            if (userMarkers[username]) {
+                                userLayers.removeLayer(userMarkers[username]);
+                                delete userMarkers[username];
+                            }
+                        } else {
+                            currentUsers.add(username);
+                            // Update map markers
+                            if (!userMarkers[username]) {
+                                userMarkers[username] = L.marker([loc.latitude, loc.longitude], { icon: carIcon })
+                                    .addTo(userLayers);
+                            } else {
+                                userMarkers[username].setLatLng([loc.latitude, loc.longitude]);
+                            }
+
+                            // Update popup content
+                            const statusText = loc.is_at_checkpoint ? `<b style="color: #4ade80;">Travelling on ${loc.road_name || 'Road'}</b>` : `<i style="color: #94a3b8;">Outside Zone</i>`;
+                            userMarkers[username].bindPopup(`
+                                <div style="font-family: 'Inter', sans-serif; color: #1e293b;">
+                                    <div style="font-weight: 800; font-size: 1rem; margin-bottom: 4px;">${username}</div>
+                                    <div style="font-size: 0.8rem; margin-bottom: 8px;">${statusText}</div>
+                                    <div style="font-size: 0.7rem; color: #64748b;">Updated: ${locTime.toLocaleTimeString()}</div>
+                                </div>
+                            `);
+                        }
+
+                        return `
+                            <tr style="${isStale ? 'opacity: 0.5; background: rgba(0,0,0,0.1);' : ''}">
+                                <td style="font-weight: 600;">
+                                    ${loc.is_at_checkpoint && !isStale ? '<span class="crossing-dot" title="Currently Crossing"></span>' : ''}
+                                    ${username} ${isStale ? '<small style="color: #64748b; font-weight: 400;">(Offline)</small>' : ''}
+                                </td>
+                                <td>${loc.latitude.toFixed(6)}</td>
+                                <td>${loc.longitude.toFixed(6)}</td>
+                                <td style="font-size: 0.85rem; color: #94a3b8;">${locTime.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+                                <td><span class="badge ${loc.is_at_checkpoint && !isStale ? 'status-at' : 'status-away'}">${loc.is_at_checkpoint && !isStale ? 'TRACKING' : 'OUTSIDE'}</span></td>
+                                <td><a href="https://www.google.com/maps?q=${loc.latitude},${loc.longitude}" target="_blank" class="maps-link">View Map</a></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                // Cleanup markers for users who disappeared from data entirely
+                for (let user in userMarkers) {
+                    if (!currentUsers.has(user)) {
+                        userLayers.removeLayer(userMarkers[user]);
+                        delete userMarkers[user];
+                    }
+                }
+
+            } catch (err) { console.error("Load locations error", err); }
+        }
+
+        async function loadGlobalEvents() {
+            try {
+                const res = await fetch('/api/locations');
+                const locations = await res.json();
+                const container = document.getElementById('global-event-log');
+                
+                const now = new Date();
+                const STALE_THRESHOLD = 2 * 60 * 1000;
+
+                // 1. Get ONLY the latest location for each user
+                const latestPerUser = {};
+                locations.forEach(loc => {
+                    const uname = loc.username || 'System';
+                    if (!latestPerUser[uname] || new Date(loc.timestamp) > new Date(latestPerUser[uname].timestamp)) {
+                        latestPerUser[uname] = loc;
+                    }
+                });
+
+                // 2. Filter for users who are currently at checkpoint AND not stale
+                const activeCrossers = Object.values(latestPerUser).filter(loc => {
+                    const locTime = new Date(loc.timestamp);
+                    return loc.is_at_checkpoint === 1 && (now - locTime) < STALE_THRESHOLD;
+                });
+
+                if (activeCrossers.length === 0) {
+                    container.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 2rem;">No users are currently crossing.</p>';
+                    return;
+                }
+
+                container.innerHTML = activeCrossers
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .map(ev => {
+                        const time = new Date(ev.timestamp).toLocaleString('en-IN', { 
+                            timeZone: 'Asia/Kolkata',
+                            hour: '2-digit', minute: '2-digit', second: '2-digit',
+                            hour12: true
+                        });
+                        return `
+                            <div class="event-item">
+                                <div>
+                                    <span style="font-weight: 700; color: var(--primary-blue); margin-right: 10px;">${ev.username}</span>
+                                    <span class="type-badge type-entry">CROSSING</span>
+                                    <span style="margin-left: 10px; font-weight: 600;">${ev.road_name || 'Toll Zone'}</span>
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--muted); font-family: monospace;">${time} IST</div>
+                            </div>
+                        `;
+                    }).join('');
+                
+                document.querySelector('.event-card h3').innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary-blue)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+                    Currently Crossing
+                `;
+            } catch (e) { console.error("Error loading active crossers", e); }
+        }
+
+        async function manualRefresh() {
+            const btn = document.getElementById('admin-refresh-btn');
+            btn.classList.add('refresh-spinning');
+            await Promise.all([loadLocations(), loadGlobalEvents()]);
+            setTimeout(() => btn.classList.remove('refresh-spinning'), 600);
         }
 
         async function rechargeWallet() {
@@ -530,7 +735,9 @@
 
         initAdminMap();
         loadLocations();
+        loadGlobalEvents();
         setInterval(loadLocations, 10000);
+        setInterval(loadGlobalEvents, 15000);
 
         window.addEventListener('load', () => {
             const splash = document.getElementById('splash-screen');

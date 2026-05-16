@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 from datetime import datetime
 import os
 import math
@@ -39,6 +40,14 @@ class UserLocation(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     username = db.Column(db.String(80), nullable=True) # Track who sent it
     is_at_checkpoint = db.Column(db.Integer, default=0) # 1 if at location
+    road_name = db.Column(db.String(200), nullable=True)
+
+class TollEvent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    road_name = db.Column(db.String(200), nullable=True)
+    event_type = db.Column(db.String(20), nullable=False) # 'ENTRY' or 'EXIT'
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class SystemConfig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -103,10 +112,24 @@ def is_near_roads(lat, lon, routes, threshold):
                 return route
     return False
 
+def matched_road_name(matched_road, fallback):
+    if isinstance(matched_road, dict):
+        return matched_road.get('name') or fallback
+    return fallback
+
+def ensure_schema():
+    inspector = inspect(db.engine)
+    if 'user_location' in inspector.get_table_names():
+        columns = {column['name'] for column in inspector.get_columns('user_location')}
+        if 'road_name' not in columns:
+            with db.engine.begin() as conn:
+                conn.exec_driver_sql('ALTER TABLE user_location ADD COLUMN road_name VARCHAR(200)')
+
 
 # Create database tables and seed users
 with app.app_context():
     db.create_all()
+    ensure_schema()
     if not User.query.filter_by(username='admin').first():
         admin = User(username='admin', password='admin123', role='admin')
         user = User(username='user', password='user123', role='user')
@@ -145,6 +168,11 @@ def admin_wallet_page():
     if session.get('role') != 'admin': return redirect(url_for('login_page'))
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'admin_wallet.html')
 
+@app.route('/admin/crossings')
+def admin_crossings_page():
+    if session.get('role') != 'admin': return redirect(url_for('login_page'))
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'admin_crossings.html')
+
 @app.route('/api/login', methods=['POST'])
 def api_login():
     data = request.get_json()
@@ -153,6 +181,20 @@ def api_login():
         session['username'], session['role'] = user.username, user.role
         return jsonify({"status": "success", "role": user.role, "redirect": url_for('index')})
     return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+
+@app.route('/api/me', methods=['GET'])
+def api_me():
+    if 'username' not in session:
+        return jsonify({"status": "error", "message": "Not logged in"}), 401
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return jsonify({"status": "error", "message": "User not found"}), 404
+    return jsonify({
+        "status": "success",
+        "username": user.username,
+        "role": user.role,
+        "balance": user.balance
+    })
 
 @app.route('/api/register', methods=['POST'])
 def api_register():
@@ -193,20 +235,38 @@ def receive_location():
         
         at_checkpoint = 0
         matched_road = None
+        road_name = config.get('road_name')
         if config['mode'] == 'point':
             at_checkpoint = 1 if calculate_distance(lat, lon, config['lat'], config['lon']) <= config['radius'] else 0
         else:
             matched_road = is_near_roads(lat, lon, config['routes'], config['radius'])
             at_checkpoint = 1 if matched_road else 0
+            if matched_road:
+                road_name = matched_road_name(matched_road, config.get('road_name'))
 
-        # ONLY store in database if user is at the checkpoint/geofence
-        if at_checkpoint:
+        # Detect transition for events
+        last_loc = UserLocation.query.filter_by(username=session['username']).order_by(UserLocation.timestamp.desc()).first()
+        prev_at_checkpoint = last_loc.is_at_checkpoint if last_loc else 0
+
+        if prev_at_checkpoint == 0 and at_checkpoint == 1:
+            # ENTRY EVENT
+            new_event = TollEvent(username=session['username'], road_name=road_name, event_type='ENTRY')
+            db.session.add(new_event)
+        elif prev_at_checkpoint == 1 and at_checkpoint == 0:
+            # EXIT EVENT
+            # For exit, we use the road name from the previous location to be accurate
+            prev_road = last_loc.road_name if last_loc else road_name
+            new_event = TollEvent(username=session['username'], road_name=prev_road, event_type='EXIT')
+            db.session.add(new_event)
+
+        # ONLY store in database if user is at the checkpoint/geofence OR if they just exited
+        if at_checkpoint or (prev_at_checkpoint == 1 and at_checkpoint == 0):
             cost_deducted = 0.0
             # Calculate distance from last checkpoint and deduct
             if isinstance(matched_road, dict) and matched_road.get('price_per_km'):
                 price_per_km = float(matched_road.get('price_per_km', 0))
-                last_loc = UserLocation.query.filter_by(username=session['username'], is_at_checkpoint=1).order_by(UserLocation.timestamp.desc()).first()
-                if last_loc:
+                # last_loc already fetched above
+                if last_loc and last_loc.is_at_checkpoint == 1:
                     time_diff = (datetime.utcnow() - last_loc.timestamp).total_seconds()
                     if time_diff < 300: # Max 5 minutes between pings for continuous distance tracking
                         dist_meters = calculate_distance(lat, lon, last_loc.latitude, last_loc.longitude)
@@ -217,7 +277,13 @@ def receive_location():
                         if user_to_charge and cost_deducted > 0:
                             user_to_charge.balance -= cost_deducted
 
-            new_location = UserLocation(latitude=lat, longitude=lon, username=session['username'], is_at_checkpoint=at_checkpoint)
+            new_location = UserLocation(
+                latitude=lat,
+                longitude=lon,
+                username=session['username'],
+                is_at_checkpoint=at_checkpoint,
+                road_name=road_name
+            )
             db.session.add(new_location)
             db.session.commit()
 
@@ -227,11 +293,28 @@ def receive_location():
         return jsonify({
             "status": "success",
             "message": "At Target" if at_checkpoint else "Outside",
-            "data": {"at_checkpoint": at_checkpoint, "balance": balance}
+            "data": {"at_checkpoint": at_checkpoint, "balance": balance, "road_name": road_name}
         })
     except Exception as e:
+        print(f"ERROR in receive_location: {str(e)}")
+        import traceback
+        traceback.print_exc()
         db.session.rollback()
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": f"Server Error: {str(e)}"}), 500
+
+@app.route('/api/events', methods=['GET'])
+def get_events():
+    if 'username' not in session: return jsonify({"status": "error"}), 401
+    
+    query = TollEvent.query
+    if session.get('role') != 'admin':
+        query = query.filter_by(username=session['username'])
+    
+    events = query.order_by(TollEvent.timestamp.desc()).limit(100).all()
+    return jsonify([{
+        "id": event.id, "username": event.username, "road_name": event.road_name,
+        "event_type": event.event_type, "timestamp": event.timestamp.isoformat() + 'Z'
+    } for event in events])
 
 @app.route('/api/get_target', methods=['GET'])
 def api_get_target_route():
@@ -287,8 +370,51 @@ def get_all_locations():
     locations = UserLocation.query.order_by(UserLocation.timestamp.desc()).all()
     return jsonify([{
         "id": loc.id, "username": loc.username, "latitude": loc.latitude, "longitude": loc.longitude,
-        "timestamp": loc.timestamp.isoformat(), "is_at_checkpoint": loc.is_at_checkpoint
+        "timestamp": loc.timestamp.isoformat() + 'Z', "is_at_checkpoint": loc.is_at_checkpoint,
+        "road_name": loc.road_name
     } for loc in locations])
+
+@app.route('/api/crossings', methods=['GET'])
+def get_crossings():
+    if session.get('role') != 'admin': return jsonify({"status": "error"}), 403
+
+    road = (request.args.get('road') or '').strip()
+    search = (request.args.get('search') or '').strip()
+
+    query = UserLocation.query.filter_by(is_at_checkpoint=1)
+    if road:
+        query = query.filter(UserLocation.road_name == road)
+    if search:
+        query = query.filter(UserLocation.username.ilike(f'%{search}%'))
+
+    locations = query.order_by(UserLocation.timestamp.desc()).limit(500).all()
+    return jsonify([{
+        "id": loc.id,
+        "username": loc.username,
+        "latitude": loc.latitude,
+        "longitude": loc.longitude,
+        "timestamp": loc.timestamp.isoformat() + 'Z',
+        "road_name": loc.road_name or "Active Monitoring Zone"
+    } for loc in locations])
+
+@app.route('/api/crossing_roads', methods=['GET'])
+def get_crossing_roads():
+    if session.get('role') != 'admin': return jsonify({"status": "error"}), 403
+    names = set()
+
+    config = get_config()
+    for route in config.get('routes', []):
+        if isinstance(route, dict) and route.get('name'):
+            names.add(route['name'])
+    if config.get('road_name'):
+        names.add(config['road_name'])
+
+    rows = db.session.query(UserLocation.road_name).filter(
+        UserLocation.is_at_checkpoint == 1,
+        UserLocation.road_name.isnot(None)
+    ).distinct().order_by(UserLocation.road_name.asc()).all()
+    names.update(row[0] for row in rows if row[0])
+    return jsonify(sorted(names))
 
 
 if __name__ == '__main__':

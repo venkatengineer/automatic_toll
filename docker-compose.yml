@@ -1,14 +1,14 @@
+version: '3.8'
+
 services:
-  app:
+  backend:
     build: .
     ports:
       - "7000:7000"
-    environment:
-      SECRET_KEY: "change-this-secret"
-      DATABASE_PATH: "/app/data/locations.db"
     volumes:
-      - app-data:/app/data
-    restart: unless-stopped
-
-volumes:
-  app-data:
+      - .:/app
+    environment:
+      - SECRET_KEY=supersecretkey
+      - DATABASE_PATH=/app/instance/locations.db
+      - FLASK_DEBUG=1
+    restart: always
